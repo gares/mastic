@@ -100,8 +100,8 @@ let toplevel env =
   | Some Element(st,_,_,_) -> items st |> List.map (fun (p,i) -> lhs p, rhs p, p, i)
 
 (* requires semantic actions to be pure *)
-let ensure_reduces : type a. a env -> production -> int -> [>`Reduce of (production * int)] list = fun env prod pos ->
-  try let _env : _ env = force_reduction prod env in [`Reduce(prod,pos)]
+let ensure_reduces : type a. a env -> production -> int -> [>`Reduce of (production)] list = fun env prod pos ->
+  try let _env : _ env = force_reduction prod env in [`Reduce(prod)]
   with Invalid_argument _ -> []
 
 let rec next_symbols env =
@@ -153,10 +153,9 @@ let show_env env =
 
 let show_gens l = List.map fst l |> String.concat " "
 let show_xsymbol = function X s -> show_symbol None s
-let show_prod (x,n) =
-  Printf.sprintf "[%s]%s"
+let show_prod (x) =
+  Printf.sprintf "[%s]"
     (String.concat " " (List.map show_xsymbol (rhs x)))
-    (if n = -1 then "" else "@" ^ string_of_int n)
 let show_prods l = String.concat " " (List.map show_prod l)
 
 type state = {
@@ -241,7 +240,7 @@ let rec loop st (checkpoint : ast checkpoint) =
               let generation_streak = st.generation_streak + 1 in
               loop { st with incoming_toks; errbuf; generation_streak } checkpoint
           | Reduce p, incoming_toks ->
-              Printf.eprintf "  RECOVERY: reduce %s\n" (show_prod (p,-1));
+              Printf.eprintf "  RECOVERY: reduce %s\n" (show_prod (p));
               let checkpoint = input_needed (force_reduction p env) in
               loop { st with incoming_toks } checkpoint
           end

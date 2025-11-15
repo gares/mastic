@@ -81,6 +81,7 @@ module Recovery = struct
   let show_token = show_token
 
   type 'a symbol = 'a I.symbol
+  type xsymbol = I.xsymbol
   let show_symbol = show_symbol
 
   type 'a terminal = 'a I.terminal
@@ -117,7 +118,7 @@ let hack () =
   | [] -> [] *)
 
 (* Initialize the lexer, and catch any exception raised by the lexer. *)
-let handle_unexpected_token _env tok toks prods next current_production generation_streak =
+let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks ~acceptable_tokens ~reducible_productions:prods ~generation_streak =
   let open Mastic.ErrorResilientParser in
   let to_error (s,(_,b,e)) = 
     let next_tok = s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e),b,e) in
@@ -129,16 +130,16 @@ let handle_unexpected_token _env tok toks prods next current_production generati
   match tok with
   | _,(Parser.(FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE),b,e) ->
         begin match prods with
-        | (p,_) :: _ -> Reduce p, tok :: toks
+        | p :: _ -> Reduce p, tok :: toks
         | [] ->
-            match next with
+            match acceptable_tokens with
             | (s,(c,_,_)) :: _ when generation_streak < 10 ->
              let next_tok = s, (c,b,e) in
              Generate next_tok, next_tok :: tok :: toks
             | _ ->
-              match current_production with
+              match productions with
               (* | Some p when I.lhs p = I.X (I.N I.N_main) -> to_error tok *)
-              | Some p when I.lhs p = I.X (I.N I.N_list_func_) -> to_error tok (* do not generate toplevel items *)
+              | [I.X (I.N I.N_list_func_),_,_,_] -> to_error tok (* do not generate toplevel items *)
               | _ -> generate_dummy tok
         end
   | _ -> to_error tok
