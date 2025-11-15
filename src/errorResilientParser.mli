@@ -38,9 +38,9 @@ module type Main =
   end
 module Make :
   functor (I : MenhirLib.IncrementalEngine.EVERYTHING)
-           (M : Main with type 'a checkpoint = 'a I.checkpoint
+          (M : Main with type 'a checkpoint = 'a I.checkpoint
                       and type token = I.token)
-           (R : Recovery with type token = I.token
+          (_ : Recovery with type token = I.token
                           and type 'a symbol = 'a I.symbol
                           and type 'a terminal = 'a I.terminal
                           and type 'a env = 'a I.env

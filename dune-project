@@ -1,7 +1,17 @@
-(lang dune 2.8)
+(lang dune 3.18)
 (name mastic)
 (using menhir 2.0)
-
-(package (name mastic))
+(source (github gares/mastic))
+(license MIT)
+(authors "Enrico Tassi")
+(maintainers "Enrico.Tassi@inria.fr")
+(maintenance_intent "(latest)")
+(package
+  (name mastic)
+  (synopsis "Make menhir-based parser error resilient")
+  (description "This library turns menhir based parsers into error resilient ones")
+  (depends menhirLib)
+  )
 
 (cram enable)
+(generate_opam_files) 

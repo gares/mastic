@@ -4,4 +4,5 @@
   (modules error errorToken errorResilientParser)
   (wrapped true)
   (libraries menhirLib)
+  (package mastic)
 )

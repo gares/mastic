@@ -13,8 +13,6 @@ module I = Parser.MenhirInterpreter
    [lexbuf] is the lexing buffer. [checkpoint] is the last checkpoint produced
    by the parser. *)
 
-let bound =ref 15
-
 type token = Parser.token = 
 | TIMES
 | THEN
@@ -113,10 +111,10 @@ let hacks = ref 0
 let hack () =
   decr hacks; if !hacks < 0 then failwith "Injecting too many tokens"
 
-let rec filter_out_infix = function
+(* let rec filter_out_infix = function
   | (_,(Parser.(TIMES | PLUS),_,_)) :: xs -> filter_out_infix xs
   | x :: xs -> x :: filter_out_infix xs
-  | [] -> []
+  | [] -> [] *)
 
 (* Initialize the lexer, and catch any exception raised by the lexer. *)
 let handle_unexpected_token _env tok toks prods next current_production =
