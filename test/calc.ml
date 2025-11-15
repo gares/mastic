@@ -117,7 +117,7 @@ let hack () =
   | [] -> [] *)
 
 (* Initialize the lexer, and catch any exception raised by the lexer. *)
-let handle_unexpected_token _env tok toks prods next current_production =
+let handle_unexpected_token _env tok toks prods next current_production generation_streak =
   let open Mastic.ErrorResilientParser in
   let to_error (s,(_,b,e)) = 
     let next_tok = s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e),b,e) in
@@ -132,10 +132,10 @@ let handle_unexpected_token _env tok toks prods next current_production =
         | (p,_) :: _ -> Reduce p, tok :: toks
         | [] ->
             match next with
-            | (s,(c,_,_)) :: _ ->
+            | (s,(c,_,_)) :: _ when generation_streak < 10 ->
              let next_tok = s, (c,b,e) in
              Generate next_tok, next_tok :: tok :: toks
-            | [] ->
+            | _ ->
               match current_production with
               (* | Some p when I.lhs p = I.X (I.N I.N_main) -> to_error tok *)
               | Some p when I.lhs p = I.X (I.N I.N_list_func_) -> to_error tok (* do not generate toplevel items *)

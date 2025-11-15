@@ -26,7 +26,7 @@ module type Recovery = sig
   val match_error_token : token -> ErrorToken.t Error.located option
 
 
-  val handle_unexpected_token : 'a env -> token tok -> token tok list -> (production * int) list -> token tok list -> production option -> (token,production) recovery_action * token tok list
+  val handle_unexpected_token : 'a env -> token tok -> token tok list -> (production * int) list -> token tok list -> production option -> int -> (token,production) recovery_action * token tok list
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
@@ -93,16 +93,23 @@ let toplevel env =
       | [x,_] -> Some x
       | _ -> None
 
+(* requires semantic actions to be pure *)
+let ensure_reduces : type a. a env -> production -> int -> [>`Reduce of (production * int)] list = fun env prod pos ->
+  try let _env : _ env = force_reduction prod env in [`Reduce(prod,pos)]
+  with Invalid_argument _ -> []
+
 let rec next_symbols env =
   match top env with 
   | None -> []
   | Some Element(st,_,_,_) ->
       let items = items st in
-      List.concat_map (next_of ~last_nullable:false (pop env)) items
+      List.concat_map (next_of ~last_nullable:false env) items
+
+
 (* and next_symbols_opt = function None -> [] | Some env -> next_symbols env  *)
 and next_of ~last_nullable env (prod,pos) =
   match drop pos (rhs prod) with
-  | [] -> if last_nullable then [] else [`Reduce (prod,pos)]
+  | [] -> if last_nullable then [] else ensure_reduces env prod pos
   | (X (T _)) :: next :: [] when compare_symbols (lhs prod) next = 0 -> []
   | (X (T x)) :: _ -> token_of_terminal x |> o2l
   | (X N nt) :: _ when nullable nt -> next_of ~last_nullable:true env (prod,pos+1)
@@ -116,13 +123,6 @@ let next_symbols env b =
   let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
   let red = List.filter_map (function `Reduce x -> Some x | _ -> None) l in
   gen, red
-
-
-(* let show_closing_symbol env =
-  match next_symbols env with
-  | Some (Generate (s,_)) -> s
-  | Some (Reduce _) -> "red"
-  | None -> "" *)
 
 let valid t =
   match match_error_token t with
@@ -153,37 +153,44 @@ let show_prod (x,n) =
     (if n = -1 then "" else "@" ^ string_of_int n)
 let show_prods l = String.concat " " (List.map show_prod l)
 
-let rec loop lexbuf errbuf (checkpoint : ast checkpoint) (last_tok : token tok list) =
+type state = {
+  lexbuf : lexbuf;
+  errbuf : (position * string) list;
+  incoming_toks : token tok list;
+  generation_streak : int;
+}
+
+let rec loop st (checkpoint : ast checkpoint) =
   match checkpoint with
   | InputNeeded _env ->
       (* The parser needs a token. Request one from the lexer,
          and offer it to the parser, which will produce a new
          checkpoint. Then, repeat. *)
-      let token, last_tok =
-        match last_tok with
-        | t :: _ -> snd t, last_tok
+      let token, st =
+        match st.incoming_toks with
+        | t :: _ -> snd t, st
         | [] ->
-            let tok = token lexbuf in
-            let toks = Lexing.lexeme lexbuf in
+            let tok = token st.lexbuf in
+            let toks = Lexing.lexeme st.lexbuf in
             let toks = if toks = "" then show_token tok else toks in
-            let startp = lexbuf.lex_start_p
-            and endp = lexbuf.lex_curr_p in
+            let startp = st.lexbuf.lex_start_p
+            and endp = st.lexbuf.lex_curr_p in
             let tok = tok, startp, endp in
             let last_tok = toks, tok in
-            tok, [last_tok] in
+            tok, { st with incoming_toks = [last_tok]; generation_streak = 0 } in
       Printf.eprintf "READ %s\n" (show_token @@ pi1 token);
       let checkpoint = offer checkpoint token in
-      loop lexbuf errbuf checkpoint last_tok
+      loop st checkpoint
   | Shifting (_,s,_) ->
       Printf.eprintf "SHIFT [%s]\n" (show_env s);
       let checkpoint = resume checkpoint in
-      loop lexbuf errbuf checkpoint (tail last_tok)
+      loop { st with incoming_toks = tail st.incoming_toks } checkpoint
   | AboutToReduce (s,p) ->
       let n = List.length @@ rhs p in
       Printf.eprintf "RED %d [%s]\n" n (show_env s);
       let checkpoint = resume checkpoint in
-      loop lexbuf errbuf checkpoint last_tok
-  | Accepted v -> errbuf,v
+      loop st checkpoint
+  | Accepted v -> st.errbuf, v
       (* The parser has succeeded and produced a semantic value. Print it. *)
   | Rejected ->
       (* The parser rejects this input. This cannot happen, here, because
@@ -191,8 +198,8 @@ let rec loop lexbuf errbuf (checkpoint : ast checkpoint) (last_tok : token tok l
       assert false
   | HandlingError env ->
       Printf.eprintf "* ERROR: stack [%s]\n" (show_env env);
-      match last_tok with
-      | (s,(t,b,e)) :: last_tok when is_error_token t ->
+      match st.incoming_toks with
+      | (s,(t,b,e)) :: incoming_toks when is_error_token t ->
           Printf.eprintf "  LOOKAHEAD: %s\n" (show_token t);
           (* b and e are likely wrong after merge *)
           begin match two_err env with
@@ -201,34 +208,37 @@ let rec loop lexbuf errbuf (checkpoint : ast checkpoint) (last_tok : token tok l
              let t = merge_parse_error t0 t in
              Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env);
              let checkpoint = offer (input_needed env) (valid t) in
-             loop lexbuf errbuf checkpoint ((s,(t,b,e)) :: last_tok)
+             let incoming_toks =  (s,(t,b,e)) :: incoming_toks in
+             loop { st with incoming_toks } checkpoint
           | OneErr(t0,env,_,_) -> (* TODO: factor with prev case *)
              let t = merge_parse_error t0 t in
              Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env);
              let checkpoint = offer (input_needed env) (valid t) in
-             loop lexbuf errbuf checkpoint ((s,(t,b,e)) :: last_tok)
+             let incoming_toks =  (s,(t,b,e)) :: incoming_toks in
+             loop { st with incoming_toks } checkpoint
           end
-      | tok :: toks ->
+      | tok :: incoming_toks ->
           Printf.eprintf "  LOOKAHEAD: %s\n" (show_token (snd tok |> pi1));
           let gens, prods = next_symbols env (snd tok |> pi2) in
           let toplevel = toplevel env in
           Printf.eprintf "    PROPOSE: reductions: %s\n" (show_prods prods);
           Printf.eprintf "    PROPOSE: tokens: %s\n"  (show_gens gens);
           Printf.eprintf "    PROPOSE: current production: %s\n"  (toplevel |> Option.fold ~none:"none" ~some:(fun x -> show_prod (x,-1)));
-          begin match handle_unexpected_token env tok toks prods gens toplevel with
-          | TurnInto t, last_tok ->
+          begin match handle_unexpected_token env tok incoming_toks prods gens toplevel st.generation_streak with
+          | TurnInto t, incoming_toks ->
               Printf.eprintf "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1));
               let checkpoint = offer (input_needed env) (snd t) in
-              loop lexbuf errbuf checkpoint last_tok
-          | Generate t, last_tok ->
+              loop { st with incoming_toks } checkpoint
+          | Generate t, incoming_toks ->
               Printf.eprintf "  RECOVERY: generate %s and push\n" (fst t);
               let checkpoint = offer (input_needed env) (snd t) in
-              let errbuf = (snd t |> pi2,fst t) :: errbuf in
-              loop lexbuf errbuf checkpoint last_tok
-          | Reduce p, last_tok ->
+              let errbuf = (snd t |> pi2,fst t) :: st.errbuf in
+              let generation_streak = st.generation_streak + 1 in
+              loop { st with incoming_toks; errbuf; generation_streak } checkpoint
+          | Reduce p, incoming_toks ->
               Printf.eprintf "  RECOVERY: reduce %s\n" (show_prod (p,-1));
               let checkpoint = input_needed (force_reduction p env) in
-              loop lexbuf errbuf checkpoint last_tok
+              loop { st with incoming_toks } checkpoint
           end
       | [] ->
           Printf.eprintf "  STUCK\n";
@@ -238,17 +248,18 @@ let rec loop lexbuf errbuf (checkpoint : ast checkpoint) (last_tok : token tok l
              Printf.eprintf "  RECOVERY: push %s on [%s]\n" (show_token t) (show_env env);
              (* loop? *)
              let checkpoint = offer (input_needed env) (valid t) in
-             loop lexbuf errbuf checkpoint last_tok
+             loop st checkpoint
           | OneErr(t0,_,t,env) ->
               let t = merge_parse_error t0 t in
               Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env);
               let checkpoint = offer (input_needed env) (valid t) in
-              loop lexbuf errbuf checkpoint last_tok
+              loop st checkpoint
 
 
 let parse lexbuf =
     let checkpoint = main lexbuf.lex_curr_p in
-    loop lexbuf [] checkpoint []
+    let st =  { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = [] } in
+    loop st checkpoint
 
 
 end

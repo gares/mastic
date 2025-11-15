@@ -22,6 +22,7 @@ module type Recovery =
       (production * int) list ->
       token tok list ->
       production option ->
+      int ->
       (token, production) recovery_action * token tok list
     val reduce_as_parse_error :
       'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
