@@ -347,7 +347,7 @@ let process (line : string) =
 
 (* -------------------------------------------------------------------------- *)
 
-(* The rest of the code is as in the [calc] demo. *)
+(* The rest of the code is as in the [main] demo. *)
 
 let process (optional_line : string option) =
   match optional_line with None -> () | Some line -> process line

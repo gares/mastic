@@ -6,11 +6,11 @@
  (flags -la 2 --table --inspection))
 
 (executable
- (name calc)
+ (name main)
  (preprocess
   (pps ppx_deriving.std))
- (modules calc ast parser lexer)
+ (modules main ast parser lexer)
  (libraries menhirLib mastic))
 
 (cram
- (deps ./calc.exe))
+ (deps ./main.exe))

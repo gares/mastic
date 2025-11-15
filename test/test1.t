@@ -1,6 +1,6 @@
 Fuzz 10
 
-  $ echo 'fun f ( x := 1) fun g ( )' | ./calc.exe -fuzz 20 -seed 0
+  $ echo 'fun f ( x := 1) fun g ( )' | ./main.exe -fuzz 20 -seed 0
   input: fun f ( x := 1) fun g ( )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f", [(Ast.Cmd.Assign ("x", «1»))]));

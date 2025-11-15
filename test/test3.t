@@ -1,6 +1,6 @@
 Fuxx
 
-  $ echo 'fun f ( if 1 then x :=  else x := 1 )' | ./calc.exe -fuzz 20  -seed 0
+  $ echo 'fun f ( if 1 then x :=  else x := 1 )' | ./main.exe -fuzz 20  -seed 0
   input: fun f ( if 1 then x :=  else x := 1 )
   error:                         ^             recovered syntax error
   error:                         ^ completed with _
