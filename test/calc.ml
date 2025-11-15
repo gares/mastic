@@ -137,10 +137,9 @@ let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks ~acce
              let next_tok = s, (c,b,e) in
              Generate next_tok, next_tok :: tok :: toks
             | _ ->
-              match productions with
-              (* | Some p when I.lhs p = I.X (I.N I.N_main) -> to_error tok *)
-              | [I.X (I.N I.N_list_func_),_,_,_] -> to_error tok (* do not generate toplevel items *)
-              | _ -> generate_dummy tok
+              if productions |> List.exists (function (I.X (I.N I.N_list_func_),_,_,_) -> true | _ -> false)
+              then to_error tok (* do not generate toplevel items *)  
+              else generate_dummy tok
         end
   | _ -> to_error tok
 
