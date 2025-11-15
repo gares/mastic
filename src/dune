@@ -1,8 +1,6 @@
-
 (library
-  (name mastic)
-  (modules error errorToken errorResilientParser)
-  (wrapped true)
-  (libraries menhirLib)
-  (package mastic)
-)
+ (name mastic)
+ (modules error errorToken errorResilientParser)
+ (wrapped true)
+ (libraries menhirLib)
+ (package mastic))
