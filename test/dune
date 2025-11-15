@@ -1,0 +1,17 @@
+(ocamllex
+  (modules lexer)
+)
+
+(menhir
+  (modules parser)
+  (flags -la 2 --table --inspection)
+)
+
+(executable
+ (name calc)
+ (preprocess (pps ppx_deriving.std))
+ (modules calc ast parser lexer)
+ (libraries menhirLib mastic)
+)
+
+(cram (deps ./calc.exe))

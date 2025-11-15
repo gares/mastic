@@ -1,0 +1,7 @@
+
+(library
+  (name mastic)
+  (modules error errorToken errorResilientParser)
+  (wrapped true)
+  (libraries menhirLib)
+)
