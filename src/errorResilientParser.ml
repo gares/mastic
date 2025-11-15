@@ -16,6 +16,7 @@ module type Recovery = sig
   val show_token : token -> string
 
   type 'a symbol
+  type xsymbol
   val show_symbol : 'a option -> 'a symbol -> string
 
   type 'a terminal
@@ -26,7 +27,14 @@ module type Recovery = sig
   val match_error_token : token -> ErrorToken.t Error.located option
 
 
-  val handle_unexpected_token : 'a env -> token tok -> token tok list -> (production * int) list -> token tok list -> production option -> int -> (token,production) recovery_action * token tok list
+  val handle_unexpected_token : 
+      productions:(xsymbol * xsymbol list * production * int) list ->
+      next_token:token tok ->
+      more_tokens:token tok list ->
+      acceptable_tokens:token tok list ->
+      reducible_productions:production list ->
+      generation_streak:int ->
+      (token, production) recovery_action * token tok list
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
@@ -46,6 +54,7 @@ module Make(I : MenhirLib.IncrementalEngine.EVERYTHING)
                       and type token = I.token)
            (R : Recovery with type token = I.token
                           and type 'a symbol = 'a I.symbol
+                          and type xsymbol = I.xsymbol
                           and type 'a terminal = 'a I.terminal
                           and type 'a env = 'a I.env
                           and type production = I.production) = struct
@@ -87,11 +96,8 @@ let rec drop n l = if n = 0 then l else drop (n-1) (List.tl l)
 
 let toplevel env =
   match top env with
-  | None -> None
-  | Some Element(st,_,_,_) ->
-      match items st with
-      | [x,_] -> Some x
-      | _ -> None
+  | None -> []
+  | Some Element(st,_,_,_) -> items st |> List.map (fun (p,i) -> lhs p, rhs p, p, i)
 
 (* requires semantic actions to be pure *)
 let ensure_reduces : type a. a env -> production -> int -> [>`Reduce of (production * int)] list = fun env prod pos ->
@@ -220,11 +226,10 @@ let rec loop st (checkpoint : ast checkpoint) =
       | tok :: incoming_toks ->
           Printf.eprintf "  LOOKAHEAD: %s\n" (show_token (snd tok |> pi1));
           let gens, prods = next_symbols env (snd tok |> pi2) in
-          let toplevel = toplevel env in
+          let productions = toplevel env in
           Printf.eprintf "    PROPOSE: reductions: %s\n" (show_prods prods);
           Printf.eprintf "    PROPOSE: tokens: %s\n"  (show_gens gens);
-          Printf.eprintf "    PROPOSE: current production: %s\n"  (toplevel |> Option.fold ~none:"none" ~some:(fun x -> show_prod (x,-1)));
-          begin match handle_unexpected_token env tok incoming_toks prods gens toplevel st.generation_streak with
+          begin match handle_unexpected_token ~productions ~next_token:tok ~more_tokens:incoming_toks ~reducible_productions:prods ~acceptable_tokens:gens ~generation_streak:st.generation_streak with
           | TurnInto t, incoming_toks ->
               Printf.eprintf "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1));
               let checkpoint = offer (input_needed env) (snd t) in

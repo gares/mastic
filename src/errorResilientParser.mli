@@ -9,6 +9,7 @@ module type Recovery =
     type token
     val show_token : token -> string
     type 'a symbol
+    type xsymbol
     val show_symbol : 'a option -> 'a symbol -> string
     type 'a terminal
     type 'a env
@@ -16,13 +17,12 @@ module type Recovery =
     val token_of_terminal : 'a terminal -> (string * token) option
     val match_error_token : token -> ErrorToken.t Error.located option
     val handle_unexpected_token :
-      'a env ->
-      token tok ->
-      token tok list ->
-      (production * int) list ->
-      token tok list ->
-      production option ->
-      int ->
+      productions:(xsymbol * xsymbol list * production * int) list ->
+      next_token:token tok ->
+      more_tokens:token tok list ->
+      acceptable_tokens:token tok list ->
+      reducible_productions:production list ->
+      generation_streak:int ->
       (token, production) recovery_action * token tok list
     val reduce_as_parse_error :
       'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
@@ -43,6 +43,7 @@ module Make :
                       and type token = I.token)
           (_ : Recovery with type token = I.token
                           and type 'a symbol = 'a I.symbol
+                          and type xsymbol = I.xsymbol
                           and type 'a terminal = 'a I.terminal
                           and type 'a env = 'a I.env
                           and type production = I.production) ->
