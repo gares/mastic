@@ -10,7 +10,7 @@
   (name mastic)
   (synopsis "Make menhir-based parser error resilient")
   (description "This library turns menhir based parsers into error resilient ones")
-  (depends menhirLib)
+  (depends (menhirLib (<> 20250912)))
   )
 
 (cram enable)
