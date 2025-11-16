@@ -38,6 +38,7 @@ module type Recovery = sig
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
+  val is_eof_token : token -> bool
 end
 
 module type IncrementalParser = sig
@@ -102,39 +103,6 @@ struct
     | None -> []
     | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
-  (* requires semantic actions to be pure *)
-  let ensure_reduces : type a. a env -> production -> int -> [> `Reduce of production ] list =
-   fun env prod pos ->
-    try
-      let _env : _ env = force_reduction prod env in
-      [ `Reduce prod ]
-    with Invalid_argument _ -> []
-
-  let rec next_symbols env =
-    match top env with
-    | None -> []
-    | Some (Element (st, _, _, _)) ->
-        let items = items st in
-        List.concat_map (next_of ~last_nullable:false env) items
-
-  (* and next_symbols_opt = function None -> [] | Some env -> next_symbols env  *)
-  and next_of ~last_nullable env (prod, pos) =
-    match drop pos (rhs prod) with
-    | [] -> if last_nullable then [] else ensure_reduces env prod pos
-    | [ X (T _); next ] when compare_symbols (lhs prod) next = 0 -> []
-    | X (T x) :: _ -> token_of_terminal x |> o2l
-    | X (N nt) :: _ when nullable nt -> next_of ~last_nullable:true env (prod, pos + 1)
-    | _ -> []
-
-  and o2l o = Option.fold ~none:[] ~some:(fun x -> [ `Generate x ]) o
-
-  let automaton_possible_moves env b =
-    let tok (s, t) = (s, (t, b, b)) in
-    let l = next_symbols env in
-    let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
-    let red = List.filter_map (function `Reduce x -> Some x | _ -> None) l in
-    (gen, red)
-
   let valid t = match match_error_token t with None -> assert false | Some x -> (t, Error.bloc x, Error.eloc x)
   let pi1 (x, _, _) = x
   let pi2 (_, x, _) = x
@@ -150,8 +118,47 @@ struct
 
   let show_gens l = List.map fst l |> String.concat " "
   let show_xsymbol = function X s -> show_symbol None s
-  let show_prod x = Printf.sprintf "[%s]" (String.concat " " (List.map show_xsymbol (rhs x)))
+  let show_prod x = Printf.sprintf "[%s := %s]" (show_xsymbol (lhs x)) (String.concat " " (List.map show_xsymbol (rhs x)))
   let show_prods l = String.concat " " (List.map show_prod l)
+
+
+  (* requires semantic actions to be pure *)
+  let ensure_reduces : type a. a env -> production -> int -> [> `Reduce of production ] list =
+   fun env prod pos ->
+    try
+      let _env : _ env = force_reduction prod env in
+      [ `Reduce prod ]
+    with Invalid_argument _ -> []
+
+  let rec next_symbols env =
+    match top env with
+    | None -> []
+    | Some (Element (st, _, _, _)) ->
+        let items = items st in
+        items |> List.iter (fun (p,i) -> dbg (fun () -> say "next_of: %d %s\n" i (show_prod p)));
+        List.concat_map (fun (p,i) -> ensure_reduces env p i) items
+        @
+        List.concat_map (next_of ~last_nullable:false env) items
+
+  (* and next_symbols_opt = function None -> [] | Some env -> next_symbols env  *)
+  and next_of ~last_nullable env (prod, pos) =
+    match drop pos (rhs prod) with
+    (* | [] -> if last_nullable then [] else ensure_reduces env prod pos *)
+    | [ X (T _); next ] when compare_symbols (lhs prod) next = 0 -> ensure_reduces env prod pos
+
+    | X (T x) :: _ -> token_of_terminal x |> o2l
+    | X (N nt) :: _ when nullable nt -> next_of ~last_nullable:true env (prod, pos + 1)
+    | _ -> ensure_reduces env prod pos
+
+  and o2l o = Option.fold ~none:[] ~some:(fun x -> [ `Generate x ]) o
+
+  let automaton_possible_moves env b =
+    let tok (s, t) = (s, (t, b, b)) in
+    let l = next_symbols env in
+    let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
+    let red = List.filter_map (function `Reduce x -> Some x | _ -> None) l in
+    (gen, red)
+
 
   type state = {
     lexbuf : lexbuf; (* the stream of tokens *)
@@ -159,6 +166,7 @@ struct
     incoming_toks : token tok list; (* the head of the token is the lookahead *)
     generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
   }
+
 
   let rec loop st (ckpt : ast checkpoint) =
     match ckpt with
@@ -184,12 +192,14 @@ struct
           | t :: _ -> (snd t, st)
           | [] ->
               let tok = token st.lexbuf in
+              let generation_streak =
+                if is_eof_token tok then st.generation_streak else 0 in
               let toks = Lexing.lexeme st.lexbuf in
               let toks = if toks = "" then show_token tok else toks in
               let startp = st.lexbuf.lex_start_p and endp = st.lexbuf.lex_curr_p in
               let tok = (tok, startp, endp) in
               let last_tok = (toks, tok) in
-              (tok, { st with incoming_toks = [ last_tok ]; generation_streak = 0 })
+              (tok, { st with incoming_toks = [ last_tok ]; generation_streak })
         in
         dbg (fun () -> say "READ %s\n" (show_token @@ pi1 token));
         let chkp = offer ckpt token in
@@ -233,7 +243,7 @@ struct
                   let chkp = offer (input_needed env) (snd t) in
                   loop { st with incoming_toks } chkp
               | Generate t, incoming_toks ->
-                  dbg (fun () -> say "  RECOVERY: generate %s and push\n" (fst t));
+                  dbg (fun () -> say "  RECOVERY: generate %s and push (generation_streak = %d)\n" (fst t) st.generation_streak);
                   let chkp = offer (input_needed env) (snd t) in
                   let errbuf = (snd t |> pi2, fst t) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in

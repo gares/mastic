@@ -53,7 +53,7 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_cmd -> x |> Option.fold ~none:"<cmd>" ~some:Ast.Cmd.show
   | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
   | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
-  | I.N I.N_list_expr_ ->
+  | I.N I.N_list_expr ->
       x |> Option.fold ~none:"<list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
   | I.N I.N_list_func_ ->
       x |> Option.fold ~none:"<list func>" ~some:(fun x -> String.concat " " @@ List.map Ast.Func.show x)
@@ -141,7 +141,7 @@ module Recovery = struct
                 let next_tok = (s, (c, b, e)) in
                 (Generate next_tok, next_tok :: tok :: toks)
             | _ ->
-                if productions |> List.exists is_production_for_sart_symbol then
+                if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then
                   to_error tok (* do not generate toplevel items *)
                 else generate_dummy tok)
       end
@@ -157,7 +157,7 @@ module Recovery = struct
     | I.N I.N_func -> assert false
     | I.N I.N_list_func_ -> assert false
     | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Expr x) b e)
-    | I.N I.N_list_expr_ -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
+    | I.N I.N_list_expr -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
     | I.T I.T_INT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (string_of_int x) b e)
     | I.T I.(T_ERROR_TOKEN) -> assert false
     | I.T I.T_IDENT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError x b e)
@@ -176,6 +176,9 @@ module Recovery = struct
     let open Mastic in
     let open Parser in
     match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (ErrorToken.merge x y) | _ -> assert false
+
+  let is_eof_token = function EOF -> true | _ -> false
+
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -266,15 +269,15 @@ let show_result header line errbuf v =
 let fuzz_with = [| ';'; ' '; '$' |]
 let fuzz_with n = fuzz_with.(n mod Array.length fuzz_with)
 
-let fuzz l =
-  let n = String.length l in
-  let m = Random.int (n - 1) in
+let fuzz rands l =
+  let m = List.hd !rands in
+  rands := List.tl !rands;
   String.mapi (fun i c -> if i = m then fuzz_with m else c) l
 
 let fuzz_no = ref 0
 let only_fno = ref 0
 
-let process (line : string) =
+let process rands (line : string) =
   let line = List.hd @@ String.split_on_char '\n' line in
   try
     let header = "input: " in
@@ -284,10 +287,10 @@ let process (line : string) =
     show_result header line errbuf v;
     Printf.printf "\n";
     for i = 1 to !fuzz_no do
-      let line = fuzz line in
+      let line = fuzz rands line in
       if !only_fno < 1 || i = !only_fno then begin
         let header = Printf.sprintf "fuzzed input #%d: " i in
-        Printf.printf "%s%s\n" header line;
+        Printf.printf "%s%s\n%!" header line;
         let lexbuf = from_string line in
         let errbuf', v' = ERParser.parse lexbuf in
         show_result header line errbuf' v';
@@ -303,24 +306,44 @@ let process (line : string) =
 
 (* The rest of the code is as in the [main] demo. *)
 
-let process (optional_line : string option) = match optional_line with None -> () | Some line -> process line
+let rec draw_rands user_given how_many bound =
+  if how_many = 0 then []
+  else
+     let r, user_given =
+       match user_given with
+       | [] -> Random.int (bound -1), user_given
+       | x :: user_given ->
+           if x >= bound then exit 2
+           else x, user_given in
+     r :: draw_rands user_given (how_many - 1) bound
 
-let main channel =
+let process rands (optional_line : string option) =
+  match optional_line with
+  | None -> exit 1
+  | Some line ->
+      let rands = draw_rands rands !fuzz_no (String.length line) in
+      Printf.printf "random: %s\n" (String.concat "," (List.map string_of_int rands));
+      process (ref rands) line
+
+let main rands channel =
   (* Attempt to read one line. *)
   let optional_line, _ = Lexer.line channel in
-  process optional_line
+  process rands optional_line
 
 let () =
   let file = ref stdin in
-  let seed = ref 0 in
+  let rands = ref "" in
   Arg.parse
     [
       ("-fuzz", Arg.Set_int fuzz_no, "how many fuzz (default 0)");
       ("-only", Arg.Set_int only_fno, "only run fuzz number N");
-      ("-seed", Arg.Set_int seed, "random seed");
+      ("-rands", Arg.Set_string rands, "random values (comma separated)");
       ("-debug", Arg.Set Mastic.ErrorResilientParser.debug, "verbose");
     ]
     (fun f -> file := open_in f)
     "help";
-  Random.init !seed;
-  main (from_channel !file)
+  let rands =
+    String.split_on_char ',' !rands |>
+    List.map (fun x -> try Some (int_of_string x) with _ -> None)
+   |> List.filter_map (fun x -> x) in
+  main rands (from_channel !file)

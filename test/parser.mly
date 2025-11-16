@@ -43,5 +43,10 @@ expr:
 | LPAREN e = expr RPAREN { e }
 | e1 = expr PLUS e2 = expr { Expr.Add (e1, e2) }
 | e1 = expr TIMES e2 = expr { Expr.Mul(e1,e2) }
-| f = IDENT; l = list(expr) { Expr.Call(f,l) } 
+| f = IDENT; l = list_expr { Expr.Call(f,l) } 
 | e = ERROR_TOKEN;  { Expr.of_token e }
+
+list_expr:
+| e = expr; { [e] }
+| e = expr; l = list_expr { e :: l }
+| ERROR_TOKEN { [] }

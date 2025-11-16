@@ -32,6 +32,8 @@ module type Recovery = sig
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
+  val is_eof_token : token -> bool
+
 end
 
 module type IncrementalParser = sig
