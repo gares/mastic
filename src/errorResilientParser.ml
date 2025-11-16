@@ -95,7 +95,7 @@ struct
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
 
-  let toplevel env =
+  let automaton_productions env =
     match top env with
     | None -> []
     | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
@@ -126,7 +126,7 @@ struct
 
   and o2l o = Option.fold ~none:[] ~some:(fun x -> [ `Generate x ]) o
 
-  let next_symbols env b =
+  let automaton_possible_moves env b =
     let tok (s, t) = (s, (t, b, b)) in
     let l = next_symbols env in
     let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
@@ -152,18 +152,31 @@ struct
   let show_prods l = String.concat " " (List.map show_prod l)
 
   type state = {
-    lexbuf : lexbuf;
-    errbuf : (position * string) list;
-    incoming_toks : token tok list;
-    generation_streak : int;
+    lexbuf : lexbuf; (* the stream of tokens *)
+    errbuf : (position * string) list; (* all tokens inserted *)
+    incoming_toks : token tok list; (* the head of the token is the lookahead *)
+    generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
   }
 
   let rec loop st (ckpt : ast checkpoint) =
     match ckpt with
+    (* pretty much the definition of error resiliency *)
+    | Rejected -> assert false
+    (* standard part, we just log what happend for debugging. Shifting pops the tokens buffer *)
+    | Accepted v ->
+        dbg (fun () -> say "ACCEPT\n");
+        (st.errbuf, v)
+    | Shifting (_, s, _) ->
+        dbg (fun () -> say "SHIFT [%s]\n" (show_env s));
+        let chkp = resume ckpt in
+        loop { st with incoming_toks = tail st.incoming_toks } chkp
+    | AboutToReduce (s, p) ->
+        let n = List.length @@ rhs p in
+        dbg (fun () -> say "RED %d [%s]\n" n (show_env s));
+        let chkp = resume ckpt in
+        loop st chkp
+    (* reading: we save the token into a buffer when empty, and read from the buffer if not empty *)
     | InputNeeded _env ->
-        (* The parser needs a token. Request one from the lexer,
-         and offer it to the parser, which will produce a new
-         checkpoint. Then, repeat. *)
         let token, st =
           match st.incoming_toks with
           | t :: _ -> (snd t, st)
@@ -179,25 +192,15 @@ struct
         dbg (fun () -> say "READ %s\n" (show_token @@ pi1 token));
         let chkp = offer ckpt token in
         loop st chkp
-    | Shifting (_, s, _) ->
-        dbg (fun () -> say "SHIFT [%s]\n" (show_env s));
-        let chkp = resume ckpt in
-        loop { st with incoming_toks = tail st.incoming_toks } chkp
-    | AboutToReduce (s, p) ->
-        let n = List.length @@ rhs p in
-        dbg (fun () -> say "RED %d [%s]\n" n (show_env s));
-        let chkp = resume ckpt in
-        loop st chkp
-    | Accepted v -> (st.errbuf, v) (* The parser has succeeded and produced a semantic value. Print it. *)
-    | Rejected ->
-        (* The parser rejects this input. This cannot happen, here, because
-         we stop as soon as the parser reports [HandlingError]. *)
-        assert false
+    (* handling errors, two cases:
+       1. the lookahead does not fit (fail to shift)
+       2. the stack does not reduce *)
     | HandlingError env -> (
         dbg (fun () -> say "* ERROR: stack [%s]\n" (show_env env));
         match st.incoming_toks with
+        (* 1.1 shift failure, the token is invalid (not even a token, just a piece of text) *)
         | (s, (t, b, e)) :: incoming_toks when is_error_token t ->
-            dbg (fun () -> say "  LOOKAHEAD: %s\n" (show_token t));
+            dbg (fun () -> say "  LOOKAHEAD: %s (invalid token)\n" (show_token t));
             (* b and e are likely wrong after merge *)
             begin
               match two_err env with
@@ -216,16 +219,19 @@ struct
                   let incoming_toks = (s, (t, b, e)) :: incoming_toks in
                   loop { st with incoming_toks } chkp
             end
-        | tok :: incoming_toks ->
-            dbg (fun () -> say "  LOOKAHEAD: %s\n" (show_token (snd tok |> pi1)));
-            let gens, prods = next_symbols env (snd tok |> pi2) in
-            let productions = toplevel env in
-            dbg (fun () -> say "    PROPOSE: reductions: %s\n" (show_prods prods));
-            dbg (fun () -> say "    PROPOSE: tokens: %s\n" (show_gens gens));
+        (* 1.1 shift failure, the token does not fit *)
+        | next_token :: incoming_toks ->
+            dbg (fun () -> say "  LOOKAHEAD: %s (out of place token)\n" (show_token (snd next_token |> pi1)));
+            let acceptable_tokens, reducible_productions = automaton_possible_moves env (snd next_token |> pi2) in
+            let productions = automaton_productions env in
+            dbg (fun () -> say "    PROPOSE: reductions: %s\n" (show_prods reducible_productions));
+            dbg (fun () -> say "    PROPOSE: tokens: %s\n" (show_gens acceptable_tokens));
             begin
               match
-                handle_unexpected_token ~productions ~next_token:tok ~more_tokens:incoming_toks
-                  ~reducible_productions:prods ~acceptable_tokens:gens ~generation_streak:st.generation_streak
+                (* TODO: do not receive incoming_tokens, the action forces them *)
+                (* TODO: can incoming tokens be more than 1 token? maybe generate could return a list? *)
+                handle_unexpected_token ~productions ~next_token ~more_tokens:incoming_toks ~reducible_productions
+                  ~acceptable_tokens ~generation_streak:st.generation_streak
               with
               | TurnInto t, incoming_toks ->
                   dbg (fun () -> say "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1)));
@@ -242,18 +248,20 @@ struct
                   let chkp = input_needed (force_reduction p env) in
                   loop { st with incoming_toks } chkp
             end
+        (* 2. reduce failure, we fold the stack into an error *)
         | [] -> (
             dbg (fun () -> say "  STUCK\n");
             match two_err env with
             | Empty -> assert false
             | ZeroErr (t, env) ->
+                (* 2.1 we turn the top of the stack into an error *)
                 dbg (fun () -> say "  RECOVERY: push %s on [%s]\n" (show_token t) (show_env env));
-                (* loop? *)
                 let chkp = offer (input_needed env) (valid t) in
                 loop st chkp
             | OneErr (t0, _, t, env) ->
-                let t = merge_parse_error t0 t in
+                (* 2.2 if the two top items are errors we merge them *)
                 dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                let t = merge_parse_error t0 t in
                 let chkp = offer (input_needed env) (valid t) in
                 loop st chkp))
 
