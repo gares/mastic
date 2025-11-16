@@ -119,16 +119,6 @@ module Recovery = struct
     | _ -> None
 
   let match_error_token = function ERROR_TOKEN x -> Some x | _ -> None
-  let hacks = ref 0
-
-  let hack () =
-    decr hacks;
-    if !hacks < 0 then failwith "Injecting too many tokens"
-
-  (* let rec filter_out_infix = function
-  | (_,(Parser.(TIMES | PLUS),_,_)) :: xs -> filter_out_infix xs
-  | x :: xs -> x :: filter_out_infix xs
-  | [] -> [] *)
 
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
   let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks
@@ -141,7 +131,6 @@ module Recovery = struct
       (TurnInto next_tok, next_tok :: toks)
     in
     let generate_dummy (_, (_, b, _e)) =
-      hack ();
       let next_tok =
         ("_", (ERROR_TOKEN (Mastic.ErrorToken.mkLexError "_" b b), b, b))
       in
@@ -321,7 +310,6 @@ let only_fno = ref 0
 let process (line : string) =
   let line = List.hd @@ String.split_on_char '\n' line in
   try
-    Recovery.hacks := String.length line;
     let header = "input: " in
     Printf.printf "%s%s\n" header line;
     let lexbuf = from_string line in
@@ -334,7 +322,6 @@ let process (line : string) =
         let header = Printf.sprintf "fuzzed input #%d: " i in
         Printf.printf "%s%s\n" header line;
         let lexbuf = from_string line in
-        Recovery.hacks := String.length line;
         let errbuf', v' = ERParser.parse lexbuf in
         show_result header line errbuf' v';
         if not (included_prog v' v) then Printf.printf "note: not a subterm\n";
