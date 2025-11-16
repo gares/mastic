@@ -54,21 +54,13 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
   | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
   | I.N I.N_list_expr_ ->
-      x
-      |> Option.fold ~none:"<list expr>" ~some:(fun x ->
-             String.concat " " @@ List.map Ast.Expr.show x)
+      x |> Option.fold ~none:"<list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
   | I.N I.N_list_func_ ->
-      x
-      |> Option.fold ~none:"<list func>" ~some:(fun x ->
-             String.concat " " @@ List.map Ast.Func.show x)
+      x |> Option.fold ~none:"<list func>" ~some:(fun x -> String.concat " " @@ List.map Ast.Func.show x)
   | I.N I.N_loption_separated_nonempty_list_SEMICOLON_cmd__ ->
-      x
-      |> Option.fold ~none:"<opt_nelist cmd>" ~some:(fun x ->
-             String.concat " " @@ List.map Ast.Cmd.show x)
+      x |> Option.fold ~none:"<opt_nelist cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
   | I.N I.N_separated_nonempty_list_SEMICOLON_cmd_ ->
-      x
-      |> Option.fold ~none:"<nelist cmd>" ~some:(fun x ->
-             String.concat " " @@ List.map Ast.Cmd.show x)
+      x |> Option.fold ~none:"<nelist cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -100,8 +92,7 @@ module Recovery = struct
   type 'a env = 'a I.env
   type production = I.production
 
-  let token_of_terminal : type a. a terminal -> (string * token) option =
-    function
+  let token_of_terminal : type a. a terminal -> (string * token) option = function
     | I.T_RPAREN -> Some (")", Parser.RPAREN)
     | I.T_ASSIGN -> Some (":=", Parser.ASSIGN)
     | T_TIMES -> Some ("*", Parser.TIMES)
@@ -120,20 +111,21 @@ module Recovery = struct
 
   let match_error_token = function ERROR_TOKEN x -> Some x | _ -> None
 
+  let is_production_for_sart_symbol = function
+    | I.X (I.N I.N_main), _, _, _ -> true (* never happens *)
+    | I.X (I.N I.N_list_func_), _, _, _ -> true
+    | _ -> false
+
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
-  let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks
-      ~acceptable_tokens ~reducible_productions:prods ~generation_streak =
+  let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks ~acceptable_tokens
+      ~reducible_productions:prods ~generation_streak =
     let open Mastic.ErrorResilientParser in
     let to_error (s, (_, b, e)) =
-      let next_tok =
-        (s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e), b, e))
-      in
+      let next_tok = (s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e), b, e)) in
       (TurnInto next_tok, next_tok :: toks)
     in
     let generate_dummy (_, (_, b, _e)) =
-      let next_tok =
-        ("_", (ERROR_TOKEN (Mastic.ErrorToken.mkLexError "_" b b), b, b))
-      in
+      let next_tok = ("_", (ERROR_TOKEN (Mastic.ErrorToken.mkLexError "_" b b), b, b)) in
       (Generate next_tok, next_tok :: tok :: toks)
     in
     match tok with
@@ -146,18 +138,13 @@ module Recovery = struct
                 let next_tok = (s, (c, b, e)) in
                 (Generate next_tok, next_tok :: tok :: toks)
             | _ ->
-                if
-                  productions
-                  |> List.exists (function
-                       | I.X (I.N I.N_list_func_), _, _, _ -> true
-                       | _ -> false)
-                then to_error tok (* do not generate toplevel items *)
+                if productions |> List.exists is_production_for_sart_symbol then
+                  to_error tok (* do not generate toplevel items *)
                 else generate_dummy tok)
       end
     | _ -> to_error tok
 
-  let reduce_as_parse_error : type a.
-      a -> a I.symbol -> position -> position -> token =
+  let reduce_as_parse_error : type a. a -> a I.symbol -> position -> position -> token =
    fun x tx b e ->
     match tx with
     | I.N I.N_main -> assert false
@@ -167,10 +154,8 @@ module Recovery = struct
     | I.N I.N_func -> assert false
     | I.N I.N_list_func_ -> assert false
     | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Expr x) b e)
-    | I.N I.N_list_expr_ ->
-        assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
-    | I.T I.T_INT ->
-        ERROR_TOKEN (Mastic.ErrorToken.mkLexError (string_of_int x) b e)
+    | I.N I.N_list_expr_ -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
+    | I.T I.T_INT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (string_of_int x) b e)
     | I.T I.(T_ERROR_TOKEN) -> assert false
     | I.T I.T_IDENT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError x b e)
     | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
@@ -187,39 +172,31 @@ module Recovery = struct
   let merge_parse_error x y =
     let open Mastic in
     let open Parser in
-    match (x, y) with
-    | ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (ErrorToken.merge x y)
-    | _ -> assert false
+    match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (ErrorToken.merge x y) | _ -> assert false
 end
 
 (* -------------------------------------------------------------------------- *)
 
 module ERParser = Mastic.ErrorResilientParser.Make (I) (Main) (Recovery)
 
-let included_opt f x y =
-  match (x, y) with None, None -> true | Some x, Some y -> f x y | _ -> false
+let included_opt f x y = match (x, y) with None, None -> true | Some x, Some y -> f x y | _ -> false
 
 let rec included_list f e l1 l2 =
   match (l1, l2) with
   | [], [] -> true
-  | x :: xs, y :: ys ->
-      (f x y && included_list f e xs ys) || (e x && included_list f e xs l2)
+  | x :: xs, y :: ys -> (f x y && included_list f e xs ys) || (e x && included_list f e xs l2)
   | _ -> false
 
 let rec included_prog : Ast.Prog.t -> Ast.Prog.t -> bool =
  fun x y ->
   let open Ast.Prog in
-  match (x, y) with
-  | Err _, _ -> true
-  | P x, P y -> included_list included_fun Ast.Func.is_err x y
-  | _ -> false
+  match (x, y) with Err _, _ -> true | P x, P y -> included_list included_fun Ast.Func.is_err x y | _ -> false
 
 and included_fun x y =
   let open Ast.Func in
   match (x, y) with
   | Err _, _ -> true
-  | Fun (n1, l1), Fun (n2, l2) ->
-      n1 = n2 && included_list included_cmd Ast.Cmd.is_err l1 l2
+  | Fun (n1, l1), Fun (n2, l2) -> n1 = n2 && included_list included_cmd Ast.Cmd.is_err l1 l2
   | _ -> false
 
 and included_cmd x y =
@@ -227,9 +204,7 @@ and included_cmd x y =
   match (x, y) with
   | Err _, _ -> true
   | Assign (n1, v1), Assign (n2, v2) -> n1 = n2 && included_expr v1 v2
-  | If (v1, x1, oy1), If (v2, x2, oy2) ->
-      included_expr v1 v2 && included_cmd x1 x2
-      && included_opt included_cmd oy1 oy2
+  | If (v1, x1, oy1), If (v2, x2, oy2) -> included_expr v1 v2 && included_cmd x1 x2 && included_opt included_cmd oy1 oy2
   | _ -> false
 
 and included_expr x y =
@@ -239,23 +214,13 @@ and included_expr x y =
   | Lit n, Lit m -> n = m
   | Mul (x1, y1), Mul (x2, y2) -> included_expr x1 y1 && included_expr x2 y2
   | Add (x1, y1), Add (x2, y2) -> included_expr x1 y1 && included_expr x2 y2
-  | Call (f, xs), Call (g, ys) ->
-      f = g && included_list included_expr is_err xs ys
+  | Call (f, xs), Call (g, ys) -> f = g && included_list included_expr is_err xs ys
   | _ -> false
 
-let underline l (b, e) =
-  Bytes.iteri
-    (fun i _ ->
-      if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ())
-    l
+let underline l (b, e) = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
 
-let rec on_prog f = function
-  | Ast.Prog.P l -> List.iter (on_func f) l
-  | Err e -> f (Mastic.Error.span e)
-
-and on_func f = function
-  | Ast.Func.Fun (_, l) -> List.iter (on_cmd f) l
-  | Err e -> f (Mastic.Error.span e)
+let rec on_prog f = function Ast.Prog.P l -> List.iter (on_func f) l | Err e -> f (Mastic.Error.span e)
+and on_func f = function Ast.Func.Fun (_, l) -> List.iter (on_cmd f) l | Err e -> f (Mastic.Error.span e)
 
 and on_cmd f = function
   | Ast.Cmd.Assign (_, v) -> on_expr f v
@@ -286,8 +251,7 @@ let show_result header line errbuf v =
   let b = String.to_bytes (String.make (String.length line) ' ') in
   on_prog (underline b) v;
   let b = String.of_bytes b in
-  if String.index_opt b '^' <> None then
-    Printf.printf "%s%s%s recovered syntax error\n" my_header padding b;
+  if String.index_opt b '^' <> None then Printf.printf "%s%s%s recovered syntax error\n" my_header padding b;
   List.rev errbuf
   |> List.iter (fun (p, s) ->
          let col = p.Lexing.pos_cnum in
@@ -336,8 +300,7 @@ let process (line : string) =
 
 (* The rest of the code is as in the [main] demo. *)
 
-let process (optional_line : string option) =
-  match optional_line with None -> () | Some line -> process line
+let process (optional_line : string option) = match optional_line with None -> () | Some line -> process line
 
 let main channel =
   (* Attempt to read one line. *)

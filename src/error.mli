@@ -1,8 +1,6 @@
 type 'a located
 
-val pp_located :
-  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a located -> unit
-
+val pp_located : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a located -> unit
 val show_located : (Format.formatter -> 'a -> unit) -> 'a located -> string
 val loc : 'a -> Lexing.position -> Lexing.position -> 'a located
 val unloc : 'a located -> 'a

@@ -22,16 +22,13 @@ let mkLexError s b e = Error.loc (LexError [ Error.loc s b e ]) b e
 let show x =
   let rec aux = function
     | [] -> assert false
-    | Token t :: ps -> (
-        match t.match_token x with Some x -> t.show x | None -> aux ps)
+    | Token t :: ps -> ( match t.match_token x with Some x -> t.show x | None -> aux ps)
   in
   aux !registered
 
 let pp fmt e = Format.fprintf fmt "%s" (show e)
 
-let of_token
-    ({ match_token; match_ast_error; build_ast_error; _ } : 'a registration) :
-    t Error.located -> 'a =
+let of_token ({ match_token; match_ast_error; build_ast_error; _ } : 'a registration) : t Error.located -> 'a =
  fun x ->
   let b = Error.bloc x in
   let e = Error.eloc x in
@@ -42,10 +39,7 @@ let of_token
       | LexError l -> build_ast_error (List.map inject_lex l)
       | _ -> build_ast_error [ inject_lex (Error.loc (show x) b e) ]
     end
-  | Some s -> (
-      match match_ast_error s with
-      | Some _ -> s
-      | None -> build_ast_error [ inject_ast (Error.loc s b e) ])
+  | Some s -> ( match match_ast_error s with Some _ -> s | None -> build_ast_error [ inject_ast (Error.loc s b e) ])
 
 let merge (x : t Error.located) (y : t Error.located) : t Error.located =
   let x, bx, ex = Error.view x in
@@ -54,9 +48,7 @@ let merge (x : t Error.located) (y : t Error.located) : t Error.located =
     | [] -> assert false
     | Token t :: ps -> (
         let match_ast_error ba ea a =
-          match t.match_ast_error a with
-          | Some x -> x
-          | None -> [ inject_ast Error.(loc a ba ea) ]
+          match t.match_ast_error a with Some x -> x | None -> [ inject_ast Error.(loc a ba ea) ]
         in
         match (t.match_token x, t.match_token y) with
         | Some x, Some y ->
@@ -90,9 +82,5 @@ let _ : string Error.located list registered =
       match_token = (function LexError l -> Some l | _ -> None);
       build_token = (fun l -> LexError l);
       match_ast_error = (fun l -> Some (List.map inject_lex l));
-      build_ast_error =
-        (fun l ->
-          l
-          |> List.map
-               (Error.map (function Error.Lex s -> s | Error.Ast x -> show x)));
+      build_ast_error = (fun l -> l |> List.map (Error.map (function Error.Lex s -> s | Error.Ast x -> show x)));
     }

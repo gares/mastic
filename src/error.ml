@@ -18,19 +18,13 @@ let min_pos p1 p2 = if p1.pos_cnum < p2.pos_cnum then p1 else p2
 let max_pos p1 p2 = if p1.pos_cnum > p2.pos_cnum then p1 else p2
 
 let span l =
-  let rec aux b e = function
-    | [] -> (b, e)
-    | x :: xs -> aux (min_pos b (bloc x)) (max_pos e (eloc x)) xs
-  in
+  let rec aux b e = function [] -> (b, e) | x :: xs -> aux (min_pos b (bloc x)) (max_pos e (eloc x)) xs in
   match l with [] -> assert false | x :: xs -> aux (bloc x) (eloc x) xs
 
 let merge = ( @ )
 
 let show show_a l =
-  Printf.sprintf "[%s]"
-    (String.concat ";"
-    @@ (List.map unloc l |> List.map (function Lex s -> s | Ast a -> show_a a))
-    )
+  Printf.sprintf "[%s]" (String.concat ";" @@ (List.map unloc l |> List.map (function Lex s -> s | Ast a -> show_a a)))
 
 let pp f fmt e =
   let f x = Format.asprintf "%a" f x in

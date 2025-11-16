@@ -1,20 +1,13 @@
 let debug = ref false
-
-module Printf = struct
-  include Printf
-
-  let eprintf x = if !debug then Printf.eprintf x else Printf.ifprintf stderr x
-end
+let dbg f = if !debug then f () else ()
+let say = Printf.eprintf
 
 type 'token tok = string * ('token * Lexing.position * Lexing.position)
 
 type ('token, 'production) recovery_action =
-  | TurnInto of
-      'token tok (* the lookahead is invalid: we shift as a parse error *)
-  | Generate of
-      'token tok (* the lookahead is invalid: we know how to complete *)
-  | Reduce of
-      'production (* the lookahead is invalid, but the stack can be reduced *)
+  | TurnInto of 'token tok (* the lookahead is invalid: we shift as a parse error *)
+  | Generate of 'token tok (* the lookahead is invalid: we know how to complete *)
+  | Reduce of 'production (* the lookahead is invalid, but the stack can be reduced *)
 
 module type Recovery = sig
   type token
@@ -42,9 +35,7 @@ module type Recovery = sig
     generation_streak:int ->
     (token, production) recovery_action * token tok list
 
-  val reduce_as_parse_error :
-    'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
-
+  val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
 end
@@ -98,14 +89,8 @@ struct
               match top env' with
               | Some (Element (ty, y, b1, e1)) ->
                   let ty = incoming_symbol ty in
-                  OneErr
-                    ( reduce_as_parse_error x tx b e,
-                      env',
-                      reduce_as_parse_error y ty b1 e1,
-                      try_pop env' )
-              | _ ->
-                  failwith "the grammar must include an atom for parse error 1")
-        )
+                  OneErr (reduce_as_parse_error x tx b e, env', reduce_as_parse_error y ty b1 e1, try_pop env')
+              | _ -> failwith "the grammar must include an atom for parse error 1"))
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -113,12 +98,10 @@ struct
   let toplevel env =
     match top env with
     | None -> []
-    | Some (Element (st, _, _, _)) ->
-        items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
+    | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
   (* requires semantic actions to be pure *)
-  let ensure_reduces : type a.
-      a env -> production -> int -> [> `Reduce of production ] list =
+  let ensure_reduces : type a. a env -> production -> int -> [> `Reduce of production ] list =
    fun env prod pos ->
     try
       let _env : _ env = force_reduction prod env in
@@ -138,8 +121,7 @@ struct
     | [] -> if last_nullable then [] else ensure_reduces env prod pos
     | [ X (T _); next ] when compare_symbols (lhs prod) next = 0 -> []
     | X (T x) :: _ -> token_of_terminal x |> o2l
-    | X (N nt) :: _ when nullable nt ->
-        next_of ~last_nullable:true env (prod, pos + 1)
+    | X (N nt) :: _ when nullable nt -> next_of ~last_nullable:true env (prod, pos + 1)
     | _ -> []
 
   and o2l o = Option.fold ~none:[] ~some:(fun x -> [ `Generate x ]) o
@@ -147,41 +129,26 @@ struct
   let next_symbols env b =
     let tok (s, t) = (s, (t, b, b)) in
     let l = next_symbols env in
-    let gen =
-      List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l
-    in
+    let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
     let red = List.filter_map (function `Reduce x -> Some x | _ -> None) l in
     (gen, red)
 
-  let valid t =
-    match match_error_token t with
-    | None -> assert false
-    | Some x -> (t, Error.bloc x, Error.eloc x)
-
+  let valid t = match match_error_token t with None -> assert false | Some x -> (t, Error.bloc x, Error.eloc x)
   let pi1 (x, _, _) = x
   let pi2 (_, x, _) = x
-
-  let is_error_token x =
-    match match_error_token x with None -> false | _ -> true
-
-  let show_element = function
-    | Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
+  let is_error_token x = match match_error_token x with None -> false | _ -> true
+  let show_element elt = match elt with Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
 
   let show_env env =
     let rec to_list env =
-      match top env with
-      | None -> []
-      | Some x -> x :: (match pop env with None -> [] | Some x -> to_list x)
+      match top env with None -> [] | Some x -> x :: (match pop env with None -> [] | Some x -> to_list x)
     in
     let stack = List.rev @@ to_list env in
     String.concat "; " (List.map show_element stack)
 
   let show_gens l = List.map fst l |> String.concat " "
   let show_xsymbol = function X s -> show_symbol None s
-
-  let show_prod x =
-    Printf.sprintf "[%s]" (String.concat " " (List.map show_xsymbol (rhs x)))
-
+  let show_prod x = Printf.sprintf "[%s]" (String.concat " " (List.map show_xsymbol (rhs x)))
   let show_prods l = String.concat " " (List.map show_prod l)
 
   type state = {
@@ -191,8 +158,8 @@ struct
     generation_streak : int;
   }
 
-  let rec loop st (checkpoint : ast checkpoint) =
-    match checkpoint with
+  let rec loop st (ckpt : ast checkpoint) =
+    match ckpt with
     | InputNeeded _env ->
         (* The parser needs a token. Request one from the lexer,
          and offer it to the parser, which will produce a new
@@ -204,113 +171,94 @@ struct
               let tok = token st.lexbuf in
               let toks = Lexing.lexeme st.lexbuf in
               let toks = if toks = "" then show_token tok else toks in
-              let startp = st.lexbuf.lex_start_p
-              and endp = st.lexbuf.lex_curr_p in
+              let startp = st.lexbuf.lex_start_p and endp = st.lexbuf.lex_curr_p in
               let tok = (tok, startp, endp) in
               let last_tok = (toks, tok) in
-              ( tok,
-                { st with incoming_toks = [ last_tok ]; generation_streak = 0 }
-              )
+              (tok, { st with incoming_toks = [ last_tok ]; generation_streak = 0 })
         in
-        Printf.eprintf "READ %s\n" (show_token @@ pi1 token);
-        let checkpoint = offer checkpoint token in
-        loop st checkpoint
+        dbg (fun () -> say "READ %s\n" (show_token @@ pi1 token));
+        let chkp = offer ckpt token in
+        loop st chkp
     | Shifting (_, s, _) ->
-        Printf.eprintf "SHIFT [%s]\n" (show_env s);
-        let checkpoint = resume checkpoint in
-        loop { st with incoming_toks = tail st.incoming_toks } checkpoint
+        dbg (fun () -> say "SHIFT [%s]\n" (show_env s));
+        let chkp = resume ckpt in
+        loop { st with incoming_toks = tail st.incoming_toks } chkp
     | AboutToReduce (s, p) ->
         let n = List.length @@ rhs p in
-        Printf.eprintf "RED %d [%s]\n" n (show_env s);
-        let checkpoint = resume checkpoint in
-        loop st checkpoint
-    | Accepted v ->
-        (st.errbuf, v)
-        (* The parser has succeeded and produced a semantic value. Print it. *)
+        dbg (fun () -> say "RED %d [%s]\n" n (show_env s));
+        let chkp = resume ckpt in
+        loop st chkp
+    | Accepted v -> (st.errbuf, v) (* The parser has succeeded and produced a semantic value. Print it. *)
     | Rejected ->
         (* The parser rejects this input. This cannot happen, here, because
          we stop as soon as the parser reports [HandlingError]. *)
         assert false
     | HandlingError env -> (
-        Printf.eprintf "* ERROR: stack [%s]\n" (show_env env);
+        dbg (fun () -> say "* ERROR: stack [%s]\n" (show_env env));
         match st.incoming_toks with
         | (s, (t, b, e)) :: incoming_toks when is_error_token t ->
-            Printf.eprintf "  LOOKAHEAD: %s\n" (show_token t);
+            dbg (fun () -> say "  LOOKAHEAD: %s\n" (show_token t));
             (* b and e are likely wrong after merge *)
             begin
               match two_err env with
-              | Empty ->
-                  failwith
-                    "the grammar start symbol must include an atom for parse \
-                     error"
+              | Empty -> failwith "the grammar start symbol must include an atom for parse error"
               | ZeroErr (t0, env) ->
                   let t = merge_parse_error t0 t in
-                  Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n"
-                    (show_token t) (show_env env);
-                  let checkpoint = offer (input_needed env) (valid t) in
+                  dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                  let chkp = offer (input_needed env) (valid t) in
                   let incoming_toks = (s, (t, b, e)) :: incoming_toks in
-                  loop { st with incoming_toks } checkpoint
+                  loop { st with incoming_toks } chkp
               | OneErr (t0, env, _, _) ->
                   (* TODO: factor with prev case *)
                   let t = merge_parse_error t0 t in
-                  Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n"
-                    (show_token t) (show_env env);
-                  let checkpoint = offer (input_needed env) (valid t) in
+                  dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                  let chkp = offer (input_needed env) (valid t) in
                   let incoming_toks = (s, (t, b, e)) :: incoming_toks in
-                  loop { st with incoming_toks } checkpoint
+                  loop { st with incoming_toks } chkp
             end
         | tok :: incoming_toks ->
-            Printf.eprintf "  LOOKAHEAD: %s\n" (show_token (snd tok |> pi1));
+            dbg (fun () -> say "  LOOKAHEAD: %s\n" (show_token (snd tok |> pi1)));
             let gens, prods = next_symbols env (snd tok |> pi2) in
             let productions = toplevel env in
-            Printf.eprintf "    PROPOSE: reductions: %s\n" (show_prods prods);
-            Printf.eprintf "    PROPOSE: tokens: %s\n" (show_gens gens);
+            dbg (fun () -> say "    PROPOSE: reductions: %s\n" (show_prods prods));
+            dbg (fun () -> say "    PROPOSE: tokens: %s\n" (show_gens gens));
             begin
               match
-                handle_unexpected_token ~productions ~next_token:tok
-                  ~more_tokens:incoming_toks ~reducible_productions:prods
-                  ~acceptable_tokens:gens
-                  ~generation_streak:st.generation_streak
+                handle_unexpected_token ~productions ~next_token:tok ~more_tokens:incoming_toks
+                  ~reducible_productions:prods ~acceptable_tokens:gens ~generation_streak:st.generation_streak
               with
               | TurnInto t, incoming_toks ->
-                  Printf.eprintf "  RECOVERY: turn to %s and push\n"
-                    (show_token (snd t |> pi1));
-                  let checkpoint = offer (input_needed env) (snd t) in
-                  loop { st with incoming_toks } checkpoint
+                  dbg (fun () -> say "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1)));
+                  let chkp = offer (input_needed env) (snd t) in
+                  loop { st with incoming_toks } chkp
               | Generate t, incoming_toks ->
-                  Printf.eprintf "  RECOVERY: generate %s and push\n" (fst t);
-                  let checkpoint = offer (input_needed env) (snd t) in
+                  dbg (fun () -> say "  RECOVERY: generate %s and push\n" (fst t));
+                  let chkp = offer (input_needed env) (snd t) in
                   let errbuf = (snd t |> pi2, fst t) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in
-                  loop
-                    { st with incoming_toks; errbuf; generation_streak }
-                    checkpoint
+                  loop { st with incoming_toks; errbuf; generation_streak } chkp
               | Reduce p, incoming_toks ->
-                  Printf.eprintf "  RECOVERY: reduce %s\n" (show_prod p);
-                  let checkpoint = input_needed (force_reduction p env) in
-                  loop { st with incoming_toks } checkpoint
+                  dbg (fun () -> say "  RECOVERY: reduce %s\n" (show_prod p));
+                  let chkp = input_needed (force_reduction p env) in
+                  loop { st with incoming_toks } chkp
             end
         | [] -> (
-            Printf.eprintf "  STUCK\n";
+            dbg (fun () -> say "  STUCK\n");
             match two_err env with
             | Empty -> assert false
             | ZeroErr (t, env) ->
-                Printf.eprintf "  RECOVERY: push %s on [%s]\n" (show_token t)
-                  (show_env env);
+                dbg (fun () -> say "  RECOVERY: push %s on [%s]\n" (show_token t) (show_env env));
                 (* loop? *)
-                let checkpoint = offer (input_needed env) (valid t) in
-                loop st checkpoint
+                let chkp = offer (input_needed env) (valid t) in
+                loop st chkp
             | OneErr (t0, _, t, env) ->
                 let t = merge_parse_error t0 t in
-                Printf.eprintf "  RECOVERY: push (squashed) %s on [%s]\n"
-                  (show_token t) (show_env env);
-                let checkpoint = offer (input_needed env) (valid t) in
-                loop st checkpoint))
+                dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                let chkp = offer (input_needed env) (valid t) in
+                loop st chkp))
 
   let parse lexbuf =
-    let checkpoint = main lexbuf.lex_curr_p in
-    let st =
-      { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = [] }
-    in
-    loop st checkpoint
+    let chkp = main lexbuf.lex_curr_p in
+    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = [] } in
+    loop st chkp
 end

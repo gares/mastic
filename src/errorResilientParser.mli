@@ -1,11 +1,7 @@
 val debug : bool ref
 
 type 'token tok = string * ('token * Lexing.position * Lexing.position)
-
-type ('token, 'production) recovery_action =
-  | TurnInto of 'token tok
-  | Generate of 'token tok
-  | Reduce of 'production
+type ('token, 'production) recovery_action = TurnInto of 'token tok | Generate of 'token tok | Reduce of 'production
 
 module type Recovery = sig
   type token
@@ -33,9 +29,7 @@ module type Recovery = sig
     generation_streak:int ->
     (token, production) recovery_action * token tok list
 
-  val reduce_as_parse_error :
-    'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
-
+  val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
 end

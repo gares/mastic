@@ -1,12 +1,7 @@
 open Mastic
 
 module Expr = struct
-  type t =
-    | Lit of int
-    | Mul of t * t
-    | Add of t * t
-    | Call of string * t list
-    | Err of t Error.t
+  type t = Lit of int | Mul of t * t | Add of t * t | Call of string * t list | Err of t Error.t
 
   let is_err = function Err _ -> true | _ -> false
 
@@ -15,8 +10,7 @@ module Expr = struct
     | Mul (a, b) -> Printf.sprintf "(%s*%s)" (show a) (show b)
     | Add (a, b) -> Printf.sprintf "(%s+%s)" (show a) (show b)
     | Err x -> Error.show show x
-    | Call (s, l) ->
-        Printf.sprintf "(%s %s)" s (String.concat " " (List.map show l))
+    | Call (s, l) -> Printf.sprintf "(%s %s)" s (String.concat " " (List.map show l))
 
   let show e = Printf.sprintf "«%s»" (show e)
   let pp fmt e = Format.fprintf fmt "%s" (show e)
@@ -35,11 +29,7 @@ module Expr = struct
 end
 
 module Cmd = struct
-  type t =
-    | Assign of string * Expr.t
-    | If of Expr.t * t * t option
-    | Err of t Error.t
-  [@@deriving show]
+  type t = Assign of string * Expr.t | If of Expr.t * t * t option | Err of t Error.t [@@deriving show]
 
   let is_err = function Err _ -> true | _ -> false
 

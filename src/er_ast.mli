@@ -2,10 +2,7 @@ module Error : sig
   type 'a located
 
   val show_located : (Format.formatter -> 'a -> unit) -> 'a located -> string
-
-  val pp_located :
-    (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a located -> unit
-
+  val pp_located : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a located -> unit
   val bloc : 'a located -> Lexing.position
   val eloc : 'a located -> Lexing.position
   val unloc : 'a located -> 'a
@@ -23,8 +20,7 @@ end
 module ErrorToken : sig
   type t = ..
 
-  val mkLexError :
-    string -> Lexing.position -> Lexing.position -> t Error.located
+  val mkLexError : string -> Lexing.position -> Lexing.position -> t Error.located
 
   type 'a registration = {
     show : 'a -> string;
