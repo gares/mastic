@@ -10,7 +10,9 @@ homepage: "https://github.com/gares/mastic"
 bug-reports: "https://github.com/gares/mastic/issues"
 depends: [
   "dune" {>= "3.18"}
+  "menhir"
   "menhirLib"
+  "ppx_deriving"
   "odoc" {with-doc}
 ]
 build: [
