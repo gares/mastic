@@ -34,7 +34,7 @@ module type Recovery = sig
   val is_error : 'a -> 'a symbol -> bool
 end
 
-module type Main = sig
+module type IncrementalParser = sig
   type ast
   type 'a checkpoint
 
@@ -47,7 +47,7 @@ end
 
 module Make : functor
   (I : MenhirLib.IncrementalEngine.EVERYTHING)
-  (M : Main with type 'a checkpoint = 'a I.checkpoint and type token = I.token)
+  (M : IncrementalParser with type 'a checkpoint = 'a I.checkpoint and type token = I.token)
   (_ : Recovery
          with type token = I.token
           and type 'a symbol = 'a I.symbol

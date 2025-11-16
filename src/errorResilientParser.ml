@@ -40,7 +40,7 @@ module type Recovery = sig
   val is_error : 'a -> 'a symbol -> bool
 end
 
-module type Main = sig
+module type IncrementalParser = sig
   type ast
   type 'a checkpoint
 
@@ -53,7 +53,7 @@ end
 
 module Make
     (I : MenhirLib.IncrementalEngine.EVERYTHING)
-    (M : Main with type 'a checkpoint = 'a I.checkpoint and type token = I.token)
+    (M : IncrementalParser with type 'a checkpoint = 'a I.checkpoint and type token = I.token)
     (R :
       Recovery
         with type token = I.token
@@ -72,25 +72,27 @@ struct
 
   type _ two_errors =
     | Empty
-    | ZeroErr : token * 'x env -> 'x two_errors
-    | OneErr : token * 'x env * token * 'x env -> 'x two_errors
+    | TopIsErr : token * 'x env -> 'x two_errors
+    | Top2AreErr : token * token * 'x env -> 'x two_errors
 
-  let two_err env =
+
+  let ensure_top_is_error_token env =
     match top env with
-    | None -> Empty
-    | Some (Element (tx, x, b, e)) -> (
+    | None -> None
+    | Some (Element (tx, x, b, e)) ->
         let tx = incoming_symbol tx in
-        let ex = is_error x tx in
-        if not ex then ZeroErr (reduce_as_parse_error x tx b e, try_pop env)
+        Some (is_error x tx, reduce_as_parse_error x tx b e, try_pop env) 
+
+  let force_new_error_token env =
+    match ensure_top_is_error_token env with
+    | None -> Empty
+    | Some(was_err, x, env1) ->
+        if was_err then TopIsErr(x,env1)
         else
-          match pop env with
-          | None -> assert false
-          | Some env' -> (
-              match top env' with
-              | Some (Element (ty, y, b1, e1)) ->
-                  let ty = incoming_symbol ty in
-                  OneErr (reduce_as_parse_error x tx b e, env', reduce_as_parse_error y ty b1 e1, try_pop env')
-              | _ -> failwith "the grammar must include an atom for parse error 1"))
+          match ensure_top_is_error_token env1 with
+          | None -> failwith "the grammar must include an atom for parse error 1"
+          | Some(_,y,env2) -> Top2AreErr(x,y,env2)
+
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -203,16 +205,9 @@ struct
             dbg (fun () -> say "  LOOKAHEAD: %s (invalid token)\n" (show_token t));
             (* b and e are likely wrong after merge *)
             begin
-              match two_err env with
-              | Empty -> failwith "the grammar start symbol must include an atom for parse error"
-              | ZeroErr (t0, env) ->
-                  let t = merge_parse_error t0 t in
-                  dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
-                  let chkp = offer (input_needed env) (valid t) in
-                  let incoming_toks = (s, (t, b, e)) :: incoming_toks in
-                  loop { st with incoming_toks } chkp
-              | OneErr (t0, env, _, _) ->
-                  (* TODO: factor with prev case *)
+              match ensure_top_is_error_token env with
+              | None -> failwith "the grammar start symbol must include an atom for parse error"
+              | Some (_,t0, env) ->
                   let t = merge_parse_error t0 t in
                   dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
                   let chkp = offer (input_needed env) (valid t) in
@@ -251,14 +246,14 @@ struct
         (* 2. reduce failure, we fold the stack into an error *)
         | [] -> (
             dbg (fun () -> say "  STUCK\n");
-            match two_err env with
+            match force_new_error_token env with
             | Empty -> assert false
-            | ZeroErr (t, env) ->
+            | TopIsErr (t, env) ->
                 (* 2.1 we turn the top of the stack into an error *)
                 dbg (fun () -> say "  RECOVERY: push %s on [%s]\n" (show_token t) (show_env env));
                 let chkp = offer (input_needed env) (valid t) in
                 loop st chkp
-            | OneErr (t0, _, t, env) ->
+            | Top2AreErr (t0, t, env) ->
                 (* 2.2 if the two top items are errors we merge them *)
                 dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
                 let t = merge_parse_error t0 t in

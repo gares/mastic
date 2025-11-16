@@ -65,9 +65,27 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
 
+
+  let token_of_terminal : type a. a I.terminal -> (string * token) option = function
+    | I.T_RPAREN -> Some (")", Parser.RPAREN)
+    | I.T_ASSIGN -> Some (":=", Parser.ASSIGN)
+    | T_TIMES -> Some ("*", Parser.TIMES)
+    | T_THEN -> Some ("then", Parser.THEN)
+    | T_SEMICOLON -> Some (";", Parser.SEMICOLON)
+    | T_PLUS -> Some ("+", Parser.PLUS)
+    | T_LPAREN -> Some ("(", Parser.LPAREN)
+    | T_INT -> Some ("int", Parser.INT 0)
+    | T_IF -> Some ("if", Parser.IF)
+    | T_IDENT -> Some ("ident", Parser.IDENT "_")
+    | T_FUN -> Some ("fun", Parser.FUN)
+    | T_ERROR_TOKEN -> None
+    | T_EOF -> Some ("eof", Parser.EOF)
+    | T_ELSE -> Some ("else", Parser.ELSE)
+    | _ -> None
+
 (* -------------------------------------------------------------------------- *)
 
-module Main = struct
+module IncrementalParser = struct
   type 'a checkpoint = 'a I.checkpoint
   type ast = Ast.Prog.t
 
@@ -92,22 +110,7 @@ module Recovery = struct
   type 'a env = 'a I.env
   type production = I.production
 
-  let token_of_terminal : type a. a terminal -> (string * token) option = function
-    | I.T_RPAREN -> Some (")", Parser.RPAREN)
-    | I.T_ASSIGN -> Some (":=", Parser.ASSIGN)
-    | T_TIMES -> Some ("*", Parser.TIMES)
-    | T_THEN -> Some ("then", Parser.THEN)
-    | T_SEMICOLON -> Some (";", Parser.SEMICOLON)
-    | T_PLUS -> Some ("+", Parser.PLUS)
-    | T_LPAREN -> Some ("(", Parser.LPAREN)
-    | T_INT -> Some ("int", Parser.INT 0)
-    | T_IF -> Some ("if", Parser.IF)
-    | T_IDENT -> Some ("ident", Parser.IDENT "_")
-    | T_FUN -> Some ("fun", Parser.FUN)
-    | T_ERROR_TOKEN -> None
-    | T_EOF -> Some ("eof", Parser.EOF)
-    | T_ELSE -> Some ("else", Parser.ELSE)
-    | _ -> None
+  let token_of_terminal = token_of_terminal
 
   let match_error_token = function ERROR_TOKEN x -> Some x | _ -> None
 
@@ -177,7 +180,7 @@ end
 
 (* -------------------------------------------------------------------------- *)
 
-module ERParser = Mastic.ErrorResilientParser.Make (I) (Main) (Recovery)
+module ERParser = Mastic.ErrorResilientParser.Make (I) (IncrementalParser) (Recovery)
 
 let included_opt f x y = match (x, y) with None, None -> true | Some x, Some y -> f x y | _ -> false
 
@@ -320,4 +323,4 @@ let () =
     (fun f -> file := open_in f)
     "help";
   Random.init !seed;
-  main (from_channel stdin)
+  main (from_channel !file)
