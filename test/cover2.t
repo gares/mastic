@@ -3,8 +3,6 @@ Coverage
   $ echo 'fun $' | ./main.exe -debug
   random: 
   input: fun $
-  error: ^^^^^ recovered syntax error
-  ast: (Ast.Prog.P [(Ast.Func.Err [fun;$])])
   READ Parser.FUN
   SHIFT [fun]
   READ (Parser.ERROR_TOKEN Lex[$])
@@ -19,4 +17,6 @@ Coverage
   SHIFT [(Ast.Func.Err [fun;$]); eof]
   RED 2 [(Ast.Func.Err [fun;$]); eof]
   ACCEPT
+  error: ^^^^^ recovered syntax error
+  ast: (Ast.Prog.P [(Ast.Func.Err [fun;$])])
   

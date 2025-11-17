@@ -1,5 +1,5 @@
 let debug = ref false
-let dbg f = if !debug then f () else ()
+let dbg f = if !debug then (f (); flush_all()) else ()
 let say = Printf.eprintf
 
 type 'token tok = string * ('token * Lexing.position * Lexing.position)

@@ -3,8 +3,6 @@ Coverage
   $ echo 'x' | ./main.exe -debug
   random: 
   input: x
-  error: ^ recovered syntax error
-  ast: (Ast.Prog.P [(Ast.Func.Err [x])])
   READ (Parser.IDENT "x")
   * ERROR: stack []
     LOOKAHEAD: (Parser.IDENT "x") (out of place token)
@@ -19,4 +17,6 @@ Coverage
   SHIFT [(Ast.Func.Err [x]); eof]
   RED 2 [(Ast.Func.Err [x]); eof]
   ACCEPT
+  error: ^ recovered syntax error
+  ast: (Ast.Prog.P [(Ast.Func.Err [x])])
   

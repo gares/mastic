@@ -3,12 +3,6 @@ Coverage
   $ echo 'fun x ( x :; else x ) ' | ./main.exe -debug
   random: 
   input: fun x ( x :; else x ) 
-  error:         ^^^^ ^^^^^^^^^ recovered syntax error
-  error:              ^ completed with _
-  error:              ^ completed with )
-  ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [x;:]); (Ast.Cmd.Err [_])]));
-       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])])
   READ Parser.FUN
   SHIFT [fun]
   READ (Parser.IDENT "x")
@@ -81,4 +75,10 @@ Coverage
   SHIFT [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [x;:]); (Ast.Cmd.Err [_])])) (Ast.Func.Err [else]) (Ast.Func.Err [x]) (Ast.Func.Err [)]); eof]
   RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [x;:]); (Ast.Cmd.Err [_])])) (Ast.Func.Err [else]) (Ast.Func.Err [x]) (Ast.Func.Err [)]); eof]
   ACCEPT
+  error:         ^^^^ ^^^^^^^^^ recovered syntax error
+  error:              ^ completed with _
+  error:              ^ completed with )
+  ast: (Ast.Prog.P
+     [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [x;:]); (Ast.Cmd.Err [_])]));
+       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])])
   
