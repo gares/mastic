@@ -125,8 +125,11 @@ module Recovery = struct
         match prods with
         | p :: _ -> Reduce p
         | [] -> (
-            if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then TurnIntoError
-            else match acceptable_tokens with x :: _ -> GenerateToken x | _ -> TurnIntoError)
+            match acceptable_tokens with
+            | x :: _ -> if generation_streak < 10 then GenerateToken x else TurnIntoError
+            | [] ->
+                let at_start = productions |> List.exists is_production_for_sart_symbol in
+                if at_start || generation_streak >= 10 then TurnIntoError else GenerateHole)
       end
     | _ -> TurnIntoError
 
