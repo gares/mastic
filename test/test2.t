@@ -103,14 +103,10 @@ Fuzz 10
   note: not a subterm
   
   fuzzed input #14: fun f ( x := f x y;)
-  error:                              ^^ recovered syntax error
+  error:                              ^  recovered syntax error
   error:                              ^ completed with _
-  error:                               ^ completed with _
   ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", «(f (x (y [_])))»)); (Ast.Cmd.Err [_])]))
-       ])
-  note: not a subterm
+     [(Ast.Func.Fun ("f", [(Ast.Cmd.Assign ("x", «(f (x (y [_])))»))]))])
   
   fuzzed input #15: fun f ( x := f ; y )
   error:                           ^   ^ recovered syntax error

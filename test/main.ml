@@ -53,14 +53,12 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_cmd -> x |> Option.fold ~none:"<cmd>" ~some:Ast.Cmd.show
   | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
   | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
-  | I.N I.N_list_expr ->
-      x |> Option.fold ~none:"<list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
-  | I.N I.N_list_func_ ->
+  | I.N I.N_ne_list_expr ->
+      x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
+  | I.N I.N_list_func ->
       x |> Option.fold ~none:"<list func>" ~some:(fun x -> String.concat " " @@ List.map Ast.Func.show x)
-  | I.N I.N_loption_separated_nonempty_list_SEMICOLON_cmd__ ->
-      x |> Option.fold ~none:"<opt_nelist cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
-  | I.N I.N_separated_nonempty_list_SEMICOLON_cmd_ ->
-      x |> Option.fold ~none:"<nelist cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
+  | I.N I.N_list_cmd ->
+      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -116,7 +114,7 @@ module Recovery = struct
 
   let is_production_for_sart_symbol = function
     | I.X (I.N I.N_main), _, _, _ -> true (* never happens *)
-    | I.X (I.N I.N_list_func_), _, _, _ -> true
+    | I.X (I.N I.N_list_func), _, _, _ -> true
     | _ -> false
 
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
@@ -125,21 +123,21 @@ module Recovery = struct
     let open Mastic.ErrorResilientParser in
     let to_error (s, (_, b, e)) =
       let next_tok = (s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e), b, e)) in
-      (TurnInto next_tok, next_tok :: toks)
+      TurnInto next_tok
     in
     let generate_dummy (_, (_, b, _e)) =
       let next_tok = ("_", (ERROR_TOKEN (Mastic.ErrorToken.mkLexError "_" b b), b, b)) in
-      (Generate next_tok, next_tok :: tok :: toks)
+      Generate next_tok
     in
     match tok with
     | _, (Parser.(FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE), b, e) -> begin
         match prods with
-        | p :: _ -> (Reduce p, tok :: toks)
+        | p :: _ -> Reduce p
         | [] -> (
             match acceptable_tokens with
             | (s, (c, _, _)) :: _ when generation_streak < 10 ->
                 let next_tok = (s, (c, b, e)) in
-                (Generate next_tok, next_tok :: tok :: toks)
+                Generate next_tok
             | _ ->
                 if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then
                   to_error tok (* do not generate toplevel items *)
@@ -151,13 +149,12 @@ module Recovery = struct
    fun x tx b e ->
     match tx with
     | I.N I.N_main -> assert false
-    | I.N I.N_loption_separated_nonempty_list_SEMICOLON_cmd__ -> assert false
-    | I.N I.N_separated_nonempty_list_SEMICOLON_cmd_ -> assert false
     | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.Cmd x) b e)
     | I.N I.N_func -> assert false
-    | I.N I.N_list_func_ -> assert false
+    | I.N I.N_list_func -> assert false
     | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Expr x) b e)
-    | I.N I.N_list_expr -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
+    | I.N I.N_ne_list_expr -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
+    | I.N I.N_list_cmd -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
     | I.T I.T_INT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (string_of_int x) b e)
     | I.T I.(T_ERROR_TOKEN) -> assert false
     | I.T I.T_IDENT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError x b e)

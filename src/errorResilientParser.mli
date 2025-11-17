@@ -27,7 +27,7 @@ module type Recovery = sig
     acceptable_tokens:token tok list ->
     reducible_productions:production list ->
     generation_streak:int ->
-    (token, production) recovery_action * token tok list
+    (token, production) recovery_action
 
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token

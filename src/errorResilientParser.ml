@@ -33,7 +33,7 @@ module type Recovery = sig
     acceptable_tokens:token tok list ->
     reducible_productions:production list ->
     generation_streak:int ->
-    (token, production) recovery_action * token tok list
+    (token, production) recovery_action
 
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
   val merge_parse_error : token -> token -> token
@@ -123,42 +123,32 @@ struct
 
 
   (* requires semantic actions to be pure *)
-  let ensure_reduces : type a. a env -> production -> int -> [> `Reduce of production ] list =
+  let ensure_reduces : type a. a env -> production -> int -> production list =
    fun env prod pos ->
     try
       let _env : _ env = force_reduction prod env in
-      [ `Reduce prod ]
+      [prod]
     with Invalid_argument _ -> []
 
-  let rec next_symbols env =
-    match top env with
-    | None -> []
-    | Some (Element (st, _, _, _)) ->
-        let items = items st in
-        items |> List.iter (fun (p,i) -> dbg (fun () -> say "next_of: %d %s\n" i (show_prod p)));
-        List.concat_map (fun (p,i) -> ensure_reduces env p i) items
-        @
-        List.concat_map (next_of ~last_nullable:false env) items
-
   (* and next_symbols_opt = function None -> [] | Some env -> next_symbols env  *)
-  and next_of ~last_nullable env (prod, pos) =
+  let rec next_of (prod, pos) =
     match drop pos (rhs prod) with
-    (* | [] -> if last_nullable then [] else ensure_reduces env prod pos *)
-    | [ X (T _); next ] when compare_symbols (lhs prod) next = 0 -> ensure_reduces env prod pos
-
+    | [ X (T _); next ] when compare_symbols (lhs prod) next = 0 -> []
     | X (T x) :: _ -> token_of_terminal x |> o2l
-    | X (N nt) :: _ when nullable nt -> next_of ~last_nullable:true env (prod, pos + 1)
-    | _ -> ensure_reduces env prod pos
+    | X (N nt) :: _ when nullable nt -> next_of (prod, pos + 1)
+    | _ -> []
 
-  and o2l o = Option.fold ~none:[] ~some:(fun x -> [ `Generate x ]) o
+  and o2l o = Option.fold ~none:[] ~some:(fun x -> [ x ]) o
 
   let automaton_possible_moves env b =
-    let tok (s, t) = (s, (t, b, b)) in
-    let l = next_symbols env in
-    let gen = List.filter_map (function `Generate x -> Some (tok x) | _ -> None) l in
-    let red = List.filter_map (function `Reduce x -> Some x | _ -> None) l in
-    (gen, red)
-
+    match top env with
+    | None -> [], []
+    | Some (Element (st, _, _, _)) ->
+        let items = items st in
+        let reductions = List.concat_map (fun (p,i) -> ensure_reduces env p i) items in
+        let tok (s, t) = (s, (t, b, b)) in
+        let acceptable = List.concat_map next_of items |> List.map tok in
+        acceptable, reductions
 
   type state = {
     lexbuf : lexbuf; (* the stream of tokens *)
@@ -238,23 +228,26 @@ struct
                 handle_unexpected_token ~productions ~next_token ~more_tokens:incoming_toks ~reducible_productions
                   ~acceptable_tokens ~generation_streak:st.generation_streak
               with
-              | TurnInto t, incoming_toks ->
+              | TurnInto t ->
+                  let incoming_toks = t :: incoming_toks in
                   dbg (fun () -> say "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1)));
                   let chkp = offer (input_needed env) (snd t) in
                   loop { st with incoming_toks } chkp
-              | Generate t, incoming_toks ->
+              | Generate t ->
+                  let incoming_toks = t :: next_token :: incoming_toks in
                   dbg (fun () -> say "  RECOVERY: generate %s and push (generation_streak = %d)\n" (fst t) st.generation_streak);
                   let chkp = offer (input_needed env) (snd t) in
                   let errbuf = (snd t |> pi2, fst t) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in
                   loop { st with incoming_toks; errbuf; generation_streak } chkp
-              | Reduce p, incoming_toks ->
+              | Reduce p ->
+                  let incoming_toks = next_token :: incoming_toks in
                   dbg (fun () -> say "  RECOVERY: reduce %s\n" (show_prod p));
                   let chkp = input_needed (force_reduction p env) in
                   loop { st with incoming_toks } chkp
             end
         (* 2. reduce failure, we fold the stack into an error *)
-        | [] -> (
+        | [] -> (assert false;
             dbg (fun () -> say "  STUCK\n");
             match force_new_error_token env with
             | Empty -> assert false

@@ -43,8 +43,7 @@ and token = parse
 | "else" { ELSE }
 | "fun" { FUN }
 | ":=" { ASSIGN }
-| eof
-    { EOF }
+| eof { EOF }
 | ['a'-'z']+ as id { IDENT id }
 | _ as x
     { ERROR_TOKEN (Mastic.ErrorToken.mkLexError (String.make 1 x) lexbuf.lex_start_p lexbuf.lex_curr_p) }

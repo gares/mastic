@@ -24,13 +24,18 @@
 %%
 
 main:
-| e = list(func); EOF { Prog.P e }
-// | e = ERROR_TOKEN;  { Ast.Prog.of_token e }
+| e = list_func; EOF { Prog.P e }
+| e = ERROR_TOKEN;  { Ast.Prog.of_token e }
 
 func:
 // | FUN; id = IDENT; LPAREN; bo = separated_list(SEMICOLON,cmd); RPAREN { Func.Fun(id,bo) }
-| FUN; id = IDENT; LPAREN; bo = separated_list(SEMICOLON,cmd); RPAREN { Func.Fun(id,bo) }
+| FUN; id = IDENT; LPAREN; bo = list_cmd; RPAREN { Func.Fun(id,bo) }
 | e = ERROR_TOKEN;  { Func.of_token e }
+
+list_func:
+| { [] }
+| f = func; l = list_func { f :: l }
+| e = ERROR_TOKEN; { [Func.of_token e] }
 
 cmd:
 | IF; e = expr; THEN; t = cmd { Cmd.If(e,t,None)}
@@ -38,15 +43,21 @@ cmd:
 | id = IDENT; ASSIGN; e = expr { Cmd.Assign(id,e) } 
 | e = ERROR_TOKEN;  { Cmd.of_token e }
 
+list_cmd:
+| { [] }
+| c = cmd { [ c] }
+| c = cmd; SEMICOLON; l = list_cmd { c :: l }
+| e = ERROR_TOKEN { [Cmd.of_token e] }
+
 expr:
 | i = INT { Expr.Lit i }
 | LPAREN e = expr RPAREN { e }
 | e1 = expr PLUS e2 = expr { Expr.Add (e1, e2) }
 | e1 = expr TIMES e2 = expr { Expr.Mul(e1,e2) }
-| f = IDENT; l = list_expr { Expr.Call(f,l) } 
+| f = IDENT; l = ne_list_expr { Expr.Call(f,l) } 
 | e = ERROR_TOKEN;  { Expr.of_token e }
 
-list_expr:
+ne_list_expr:
 | e = expr; { [e] }
-| e = expr; l = list_expr { e :: l }
-| ERROR_TOKEN { [] }
+| e = expr; l = ne_list_expr { e :: l }
+| e = ERROR_TOKEN { [Expr.of_token e] }
