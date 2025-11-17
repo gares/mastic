@@ -121,16 +121,12 @@ module Recovery = struct
       ~reducible_productions:prods ~generation_streak =
     let open Mastic.ErrorResilientParser in
     match tok with
-    | { t = Parser.(FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE) } -> begin
+    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } -> begin
         match prods with
         | p :: _ -> Reduce p
         | [] -> (
-            match acceptable_tokens with
-            | x :: _ when generation_streak < 10 -> GenerateToken x
-            | _ ->
-                if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then
-                  TurnIntoError (* do not generate toplevel items *)
-                else GenerateHole)
+            if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then TurnIntoError
+            else match acceptable_tokens with x :: _ -> GenerateToken x | _ -> TurnIntoError)
       end
     | _ -> TurnIntoError
 
