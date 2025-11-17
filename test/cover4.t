@@ -8,7 +8,7 @@ Coverage
     LOOKAHEAD: (Parser.IDENT "x") (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: 
-    RECOVERY: turn to (Parser.ERROR_TOKEN Lex[x]) and push
+    RECOVERY: turn (Parser.IDENT "x") into (Parser.ERROR_TOKEN [x]) and push
   SHIFT [perr]
   READ Parser.EOF
   RED 1 [perr]

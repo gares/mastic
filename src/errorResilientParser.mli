@@ -1,7 +1,12 @@
 val debug : bool ref
 
-type 'token tok = string * ('token * Lexing.position * Lexing.position)
-type ('token, 'production) recovery_action = TurnInto of 'token tok | Generate of 'token tok | Reduce of 'production
+type 'token tok = { s : string; t : 'token; b : Lexing.position; e : Lexing.position }
+
+type ('token, 'production) recovery_action =
+  | TurnIntoError
+  | GenerateHole
+  | GenerateToken of 'token tok
+  | Reduce of 'production
 
 module type Recovery = sig
   type token
@@ -19,6 +24,7 @@ module type Recovery = sig
 
   val token_of_terminal : 'a terminal -> (string * token) option
   val match_error_token : token -> ErrorToken.t Error.located option
+  val build_error_token : ErrorToken.t Error.located -> token
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
@@ -33,7 +39,6 @@ module type Recovery = sig
   val merge_parse_error : token -> token -> token
   val is_error : 'a -> 'a symbol -> bool
   val is_eof_token : token -> bool
-
 end
 
 module type IncrementalParser = sig

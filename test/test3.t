@@ -7,8 +7,9 @@ Fuxx
   error:                         ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
            ]
          ))
        ])
@@ -19,7 +20,9 @@ Fuxx
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Err [x;:]), None)); (Ast.Cmd.Err [_])]));
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [ident;:]), None));
+           (Ast.Cmd.Err [_])]
+         ));
        (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
@@ -29,8 +32,9 @@ Fuxx
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
            ]
          ))
        ])
@@ -39,8 +43,9 @@ Fuxx
   error:                                  ^^             recovered syntax error
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[$]»)),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [$]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
            ]
          ))
        ])
@@ -49,7 +54,17 @@ Fuxx
   error:                                          ^^^    recovered syntax error
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «(e (se (x [:=] 1)))»)),
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x",
+                (Ast.Expr.Call ("e",
+                   [(Ast.Expr.Call ("se",
+                       [(Ast.Expr.Call ("x",
+                           [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))
+                         ]
+                       ))
+                     ]
+                   ))
+                )),
              None))
            ]
          ))
@@ -60,8 +75,19 @@ Fuxx
   error:                                     ^^   ^^^    recovered syntax error
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1»,
-             (Ast.Cmd.Assign ("x", «(el [$] (e (x [:=] 1)))»)), None))
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x",
+                (Ast.Expr.Call ("el",
+                   [(Ast.Expr.Err [$]);
+                     (Ast.Expr.Call ("e",
+                        [(Ast.Expr.Call ("x",
+                            [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))
+                          ]
+                        ))
+                     ]
+                   ))
+                )),
+             None))
            ]
          ))
        ])
@@ -73,8 +99,9 @@ Fuxx
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («[1;hen;x;:=]», (Ast.Cmd.Err [_]),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Err [(Ast.Expr.Lit 1);hen;x;:=]),
+             (Ast.Cmd.Err [_]), (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))
+             ))
            ]
          ))
        ])
@@ -85,8 +112,9 @@ Fuxx
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («[1;the;x;:=]», (Ast.Cmd.Err [_]),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Err [(Ast.Expr.Lit 1);the;x;:=]),
+             (Ast.Cmd.Err [_]), (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))
+             ))
            ]
          ))
        ])
@@ -97,7 +125,9 @@ Fuxx
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Err [_]), None)); (Ast.Cmd.Err [:=])]));
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [_]), None));
+           (Ast.Cmd.Err [:=])]
+         ));
        (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
@@ -105,7 +135,7 @@ Fuxx
   fuzzed input #9: fun f$( if 1 then x :=  else x := 1 )
   error:           ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;f;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
+     [(Ast.Func.Err [fun;ident;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
        (Ast.Func.Err [1]); (Ast.Func.Err [then]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [else]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [1]); (Ast.Func.Err [)])])
@@ -113,7 +143,7 @@ Fuxx
   fuzzed input #10: fun f$( if 1 then x :=  else x := 1 )
   error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;f;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
+     [(Ast.Func.Err [fun;ident;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
        (Ast.Func.Err [1]); (Ast.Func.Err [then]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [else]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [1]); (Ast.Func.Err [)])])
@@ -133,7 +163,9 @@ Fuxx
   error:                                    ^ completed with )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Err [x;:]), None)); (Ast.Cmd.Err [_])]));
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [ident;:]), None));
+           (Ast.Cmd.Err [_])]
+         ));
        (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
@@ -143,8 +175,9 @@ Fuxx
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
            ]
          ))
        ])
@@ -156,8 +189,9 @@ Fuxx
   error:                                          ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)),
-             (Some (Ast.Cmd.Assign ("x", «[_]»)))));
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))))));
            (Ast.Cmd.Err [:=;1])]
          ))
        ])
@@ -168,8 +202,9 @@ Fuxx
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («[$]», (Ast.Cmd.Assign ("x", «[_]»)),
-             (Some (Ast.Cmd.Assign ("x", «1»)))))
+         [(Ast.Cmd.If ((Ast.Expr.Err [$]),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
            ]
          ))
        ])
@@ -179,8 +214,9 @@ Fuxx
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)), None));
-           (Ast.Cmd.Err [lse;x;:=;1])]
+         [(Ast.Cmd.If ((Ast.Expr.Lit 1),
+             (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))), None));
+           (Ast.Cmd.Err [ident;x;:=;1])]
          ))
        ])
   note: not a subterm
@@ -210,8 +246,8 @@ Fuxx
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Err
-             [(Ast.Cmd.If («1», (Ast.Cmd.Assign ("x", «[_]»)),
-     (Some (Ast.Cmd.Err [x;=]))));1])
+             [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
+     (Some (Ast.Cmd.Err [ident;=]))));1])
            ]
          ))
        ])
@@ -219,7 +255,7 @@ Fuxx
   fuzzed input #20: fun f$( if 1 then x :=  else x := 1 )
   error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;f;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
+     [(Ast.Func.Err [fun;ident;$]); (Ast.Func.Err [(]); (Ast.Func.Err [if]);
        (Ast.Func.Err [1]); (Ast.Func.Err [then]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [else]); (Ast.Func.Err [x]);
        (Ast.Func.Err [:=]); (Ast.Func.Err [1]); (Ast.Func.Err [)])])

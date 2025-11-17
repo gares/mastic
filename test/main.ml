@@ -63,23 +63,22 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
 
-
-  let token_of_terminal : type a. a I.terminal -> (string * token) option = function
-    | I.T_RPAREN -> Some (")", Parser.RPAREN)
-    | I.T_ASSIGN -> Some (":=", Parser.ASSIGN)
-    | T_TIMES -> Some ("*", Parser.TIMES)
-    | T_THEN -> Some ("then", Parser.THEN)
-    | T_SEMICOLON -> Some (";", Parser.SEMICOLON)
-    | T_PLUS -> Some ("+", Parser.PLUS)
-    | T_LPAREN -> Some ("(", Parser.LPAREN)
-    | T_INT -> Some ("int", Parser.INT 0)
-    | T_IF -> Some ("if", Parser.IF)
-    | T_IDENT -> Some ("ident", Parser.IDENT "_")
-    | T_FUN -> Some ("fun", Parser.FUN)
-    | T_ERROR_TOKEN -> None
-    | T_EOF -> Some ("eof", Parser.EOF)
-    | T_ELSE -> Some ("else", Parser.ELSE)
-    | _ -> None
+let token_of_terminal : type a. a I.terminal -> (string * token) option = function
+  | I.T_RPAREN -> Some (")", Parser.RPAREN)
+  | I.T_ASSIGN -> Some (":=", Parser.ASSIGN)
+  | T_TIMES -> Some ("*", Parser.TIMES)
+  | T_THEN -> Some ("then", Parser.THEN)
+  | T_SEMICOLON -> Some (";", Parser.SEMICOLON)
+  | T_PLUS -> Some ("+", Parser.PLUS)
+  | T_LPAREN -> Some ("(", Parser.LPAREN)
+  | T_INT -> Some ("int", Parser.INT 0)
+  | T_IF -> Some ("if", Parser.IF)
+  | T_IDENT -> Some ("ident", Parser.IDENT "_")
+  | T_FUN -> Some ("fun", Parser.FUN)
+  | T_ERROR_TOKEN -> None
+  | T_EOF -> Some ("eof", Parser.EOF)
+  | T_ELSE -> Some ("else", Parser.ELSE)
+  | _ -> None
 
 (* -------------------------------------------------------------------------- *)
 
@@ -109,8 +108,8 @@ module Recovery = struct
   type production = I.production
 
   let token_of_terminal = token_of_terminal
-
   let match_error_token = function ERROR_TOKEN x -> Some x | _ -> None
+  let build_error_token t = ERROR_TOKEN t
 
   let is_production_for_sart_symbol = function
     | I.X (I.N I.N_main), _, _, _ -> true (* never happens *)
@@ -121,43 +120,30 @@ module Recovery = struct
   let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks ~acceptable_tokens
       ~reducible_productions:prods ~generation_streak =
     let open Mastic.ErrorResilientParser in
-    let to_error (s, (_, b, e)) =
-      let next_tok = (s, (ERROR_TOKEN (Mastic.ErrorToken.mkLexError s b e), b, e)) in
-      TurnInto next_tok
-    in
-    let generate_dummy (_, (_, b, _e)) =
-      let next_tok = ("_", (ERROR_TOKEN (Mastic.ErrorToken.mkLexError "_" b b), b, b)) in
-      Generate next_tok
-    in
     match tok with
-    | _, (Parser.(FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE), b, e) -> begin
+    | { t = Parser.(FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE) } -> begin
         match prods with
         | p :: _ -> Reduce p
         | [] -> (
             match acceptable_tokens with
-            | (s, (c, _, _)) :: _ when generation_streak < 10 ->
-                let next_tok = (s, (c, b, e)) in
-                Generate next_tok
+            | x :: _ when generation_streak < 10 -> GenerateToken x
             | _ ->
                 if productions |> List.exists is_production_for_sart_symbol || generation_streak >= 10 then
-                  to_error tok (* do not generate toplevel items *)
-                else generate_dummy tok)
+                  TurnIntoError (* do not generate toplevel items *)
+                else GenerateHole)
       end
-    | _ -> to_error tok
+    | _ -> TurnIntoError
 
   let reduce_as_parse_error : type a. a -> a I.symbol -> position -> position -> token =
    fun x tx b e ->
     match tx with
     | I.N I.N_main -> assert false
-    | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.Cmd x) b e)
-    | I.N I.N_func -> assert false
+    | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.Err x) b e)
+    | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err x) b e)
+    | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.Err x) b e)
     | I.N I.N_list_func -> assert false
-    | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Expr x) b e)
-    | I.N I.N_ne_list_expr -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
-    | I.N I.N_list_cmd -> assert false (* ERROR_TOKEN (Ast.Expr.ERROR_TOKEN([],[x,b,e])),b,e *)
-    | I.T I.T_INT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (string_of_int x) b e)
-    | I.T I.(T_ERROR_TOKEN) -> assert false
-    | I.T I.T_IDENT -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError x b e)
+    | I.N I.N_ne_list_expr -> assert false
+    | I.N I.N_list_cmd -> assert false
     | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
 
   let is_error : type a. a -> a I.symbol -> bool =
@@ -175,7 +161,6 @@ module Recovery = struct
     match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (ErrorToken.merge x y) | _ -> assert false
 
   let is_eof_token = function EOF -> true | _ -> false
-
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -276,28 +261,24 @@ let only_fno = ref 0
 
 let process rands (line : string) =
   let line = List.hd @@ String.split_on_char '\n' line in
-  try
-    let header = "input: " in
-    Printf.printf "%s%s\n" header line;
-    let lexbuf = from_string line in
-    let errbuf, v = ERParser.parse lexbuf in
-    show_result header line errbuf v;
-    Printf.printf "\n";
-    for i = 1 to !fuzz_no do
-      let line = fuzz rands line in
-      if !only_fno < 1 || i = !only_fno then begin
-        let header = Printf.sprintf "fuzzed input #%d: " i in
-        Printf.printf "%s%s\n%!" header line;
-        let lexbuf = from_string line in
-        let errbuf', v' = ERParser.parse lexbuf in
-        show_result header line errbuf' v';
-        if not (included_prog v' v) then Printf.printf "note: not a subterm\n";
-        Printf.printf "\n"
-      end
-    done
-  with Lexer.Error msg ->
-    Printf.printf "error: %s%!" msg;
-    exit 1
+  let header = "input: " in
+  Printf.printf "%s%s\n" header line;
+  let lexbuf = from_string line in
+  let errbuf, v = ERParser.parse lexbuf in
+  show_result header line errbuf v;
+  Printf.printf "\n";
+  for i = 1 to !fuzz_no do
+    let line = fuzz rands line in
+    if !only_fno < 1 || i = !only_fno then begin
+      let header = Printf.sprintf "fuzzed input #%d: " i in
+      Printf.printf "%s%s\n%!" header line;
+      let lexbuf = from_string line in
+      let errbuf', v' = ERParser.parse lexbuf in
+      show_result header line errbuf' v';
+      if not (included_prog v' v) then Printf.printf "note: not a subterm\n";
+      Printf.printf "\n"
+    end
+  done
 
 (* -------------------------------------------------------------------------- *)
 
@@ -306,26 +287,21 @@ let process rands (line : string) =
 let rec draw_rands user_given how_many bound =
   if how_many = 0 then []
   else
-     let r, user_given =
-       match user_given with
-       | [] -> Random.int (bound -1), user_given
-       | x :: user_given ->
-           if x >= bound then exit 2
-           else x, user_given in
-     r :: draw_rands user_given (how_many - 1) bound
+    let r, user_given =
+      match user_given with
+      | [] -> (Random.int (bound - 1), user_given)
+      | x :: user_given -> if x >= bound then exit 2 else (x, user_given)
+    in
+    r :: draw_rands user_given (how_many - 1) bound
 
-let process rands (optional_line : string option) =
-  match optional_line with
-  | None -> exit 1
-  | Some line ->
-      let rands = draw_rands rands !fuzz_no (String.length line) in
-      Printf.printf "random: %s\n" (String.concat "," (List.map string_of_int rands));
-      process (ref rands) line
+let process rands line =
+  let rands = draw_rands rands !fuzz_no (String.length line) in
+  Printf.printf "random: %s\n" (String.concat "," (List.map string_of_int rands));
+  process (ref rands) line
 
 let main rands channel =
-  (* Attempt to read one line. *)
-  let optional_line, _ = Lexer.line channel in
-  process rands optional_line
+  let line = input_line channel in
+  process rands line
 
 let () =
   let file = ref stdin in
@@ -340,7 +316,8 @@ let () =
     (fun f -> file := open_in f)
     "help";
   let rands =
-    String.split_on_char ',' !rands |>
-    List.map (fun x -> try Some (int_of_string x) with _ -> None)
-   |> List.filter_map (fun x -> x) in
-  main rands (from_channel !file)
+    String.split_on_char ',' !rands
+    |> List.map (fun x -> try Some (int_of_string x) with _ -> None)
+    |> List.filter_map (fun x -> x)
+  in
+  main rands !file

@@ -75,7 +75,7 @@ let register (t : 'a registration) : 'a registered =
   Registered { of_token = of_token t }
 
 let _ : string Error.located list registered =
-  let show l = "Lex[" ^ String.concat ";" (List.map Error.unloc l) ^ "]" in
+  let show l = "[" ^ String.concat ";" (List.map Error.unloc l) ^ "]" in
   register
     {
       show;

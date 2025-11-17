@@ -1,13 +1,22 @@
 let debug = ref false
-let dbg f = if !debug then (f (); flush_all()) else ()
+
+let dbg f =
+  if !debug then (
+    f ();
+    flush_all ())
+  else ()
+
 let say = Printf.eprintf
 
-type 'token tok = string * ('token * Lexing.position * Lexing.position)
+type 'token tok = { s : string; t : 'token; b : Lexing.position; e : Lexing.position }
+
+let tok_to_triple { t; b; e } = (t, b, e)
 
 type ('token, 'production) recovery_action =
-  | TurnInto of 'token tok (* the lookahead is invalid: we shift as a parse error *)
-  | Generate of 'token tok (* the lookahead is invalid: we know how to complete *)
-  | Reduce of 'production (* the lookahead is invalid, but the stack can be reduced *)
+  | TurnIntoError
+  | GenerateHole
+  | GenerateToken of 'token tok
+  | Reduce of 'production
 
 module type Recovery = sig
   type token
@@ -25,6 +34,7 @@ module type Recovery = sig
 
   val token_of_terminal : 'a terminal -> (string * token) option
   val match_error_token : token -> ErrorToken.t Error.located option
+  val build_error_token : ErrorToken.t Error.located -> token
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
@@ -71,29 +81,27 @@ struct
 
   let try_pop env = match pop env with Some x -> x | None -> env
 
-  type _ two_errors =
+  (* type _ two_errors =
     | Empty
     | TopIsErr : token * 'x env -> 'x two_errors
-    | Top2AreErr : token * token * 'x env -> 'x two_errors
-
+    | Top2AreErr : token * token * 'x env -> 'x two_errors *)
 
   let ensure_top_is_error_token env =
     match top env with
     | None -> None
     | Some (Element (tx, x, b, e)) ->
         let tx = incoming_symbol tx in
-        Some (is_error x tx, reduce_as_parse_error x tx b e, try_pop env) 
+        Some (is_error x tx, reduce_as_parse_error x tx b e, try_pop env)
 
-  let force_new_error_token env =
+  (* let force_new_error_token env =
     match ensure_top_is_error_token env with
     | None -> Empty
-    | Some(was_err, x, env1) ->
-        if was_err then TopIsErr(x,env1)
+    | Some (was_err, x, env1) -> (
+        if was_err then TopIsErr (x, env1)
         else
           match ensure_top_is_error_token env1 with
           | None -> failwith "the grammar must include an atom for parse error 1"
-          | Some(_,y,env2) -> Top2AreErr(x,y,env2)
-
+          | Some (_, y, env2) -> Top2AreErr (x, y, env2)) *)
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -104,8 +112,6 @@ struct
     | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
   let valid t = match match_error_token t with None -> assert false | Some x -> (t, Error.bloc x, Error.eloc x)
-  let pi1 (x, _, _) = x
-  let pi2 (_, x, _) = x
   let is_error_token x = match match_error_token x with None -> false | _ -> true
   let show_element elt = match elt with Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
 
@@ -116,18 +122,20 @@ struct
     let stack = List.rev @@ to_list env in
     String.concat "; " (List.map show_element stack)
 
-  let show_gens l = List.map fst l |> String.concat " "
+  let show_gens l = List.map (fun x -> x.s) l |> String.concat " "
   let show_xsymbol = function X s -> show_symbol None s
-  let show_prod x = Printf.sprintf "[%s := %s]" (show_xsymbol (lhs x)) (String.concat " " (List.map show_xsymbol (rhs x)))
-  let show_prods l = String.concat " " (List.map show_prod l)
 
+  let show_prod x =
+    Printf.sprintf "[%s := %s]" (show_xsymbol (lhs x)) (String.concat " " (List.map show_xsymbol (rhs x)))
+
+  let show_prods l = String.concat " " (List.map show_prod l)
 
   (* requires semantic actions to be pure *)
   let ensure_reduces : type a. a env -> production -> int -> production list =
    fun env prod pos ->
     try
       let _env : _ env = force_reduction prod env in
-      [prod]
+      [ prod ]
     with Invalid_argument _ -> []
 
   (* and next_symbols_opt = function None -> [] | Some env -> next_symbols env  *)
@@ -142,13 +150,13 @@ struct
 
   let automaton_possible_moves env b =
     match top env with
-    | None -> [], []
+    | None -> ([], [])
     | Some (Element (st, _, _, _)) ->
         let items = items st in
-        let reductions = List.concat_map (fun (p,i) -> ensure_reduces env p i) items in
-        let tok (s, t) = (s, (t, b, b)) in
+        let reductions = List.concat_map (fun (p, i) -> ensure_reduces env p i) items in
+        let tok (s, t) = { s; t; b; e = b } in
         let acceptable = List.concat_map next_of items |> List.map tok in
-        acceptable, reductions
+        (acceptable, reductions)
 
   type state = {
     lexbuf : lexbuf; (* the stream of tokens *)
@@ -156,7 +164,6 @@ struct
     incoming_toks : token tok list; (* the head of the token is the lookahead *)
     generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
   }
-
 
   let rec loop st (ckpt : ast checkpoint) =
     match ckpt with
@@ -177,21 +184,19 @@ struct
         loop st chkp
     (* reading: we save the token into a buffer when empty, and read from the buffer if not empty *)
     | InputNeeded _env ->
-        let token, st =
+        let ((tok, _, _) as token), st =
           match st.incoming_toks with
-          | t :: _ -> (snd t, st)
+          | t :: _ -> (tok_to_triple t, st)
           | [] ->
-              let tok = token st.lexbuf in
-              let generation_streak =
-                if is_eof_token tok then st.generation_streak else 0 in
+              let t = token st.lexbuf in
+              let generation_streak = if is_eof_token t then st.generation_streak else 0 in
               let toks = Lexing.lexeme st.lexbuf in
-              let toks = if toks = "" then show_token tok else toks in
-              let startp = st.lexbuf.lex_start_p and endp = st.lexbuf.lex_curr_p in
-              let tok = (tok, startp, endp) in
-              let last_tok = (toks, tok) in
-              (tok, { st with incoming_toks = [ last_tok ]; generation_streak })
+              let s = if toks = "" then show_token t else toks in
+              let b = st.lexbuf.lex_start_p and e = st.lexbuf.lex_curr_p in
+              let last_tok = { s; t; b; e } in
+              (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak })
         in
-        dbg (fun () -> say "READ %s\n" (show_token @@ pi1 token));
+        dbg (fun () -> say "READ %s\n" (show_token @@ tok));
         let chkp = offer ckpt token in
         loop st chkp
     (* handling errors, two cases:
@@ -201,23 +206,23 @@ struct
         dbg (fun () -> say "* ERROR: stack [%s]\n" (show_env env));
         match st.incoming_toks with
         (* 1.1 shift failure, the token is invalid (not even a token, just a piece of text) *)
-        | (s, (t, b, e)) :: incoming_toks when is_error_token t ->
+        | { s; t; b; e } :: incoming_toks when is_error_token t ->
             dbg (fun () -> say "  LOOKAHEAD: %s (invalid token)\n" (show_token t));
             (* b and e are likely wrong after merge *)
             begin
               match ensure_top_is_error_token env with
               | None -> failwith "the grammar start symbol must include an atom for parse error"
-              | Some (_,t0, env) ->
+              | Some (_, t0, env) ->
                   let t = merge_parse_error t0 t in
                   dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
                   let chkp = offer (input_needed env) (valid t) in
-                  let incoming_toks = (s, (t, b, e)) :: incoming_toks in
+                  let incoming_toks = { s; t; b; e } :: incoming_toks in
                   loop { st with incoming_toks } chkp
             end
         (* 1.1 shift failure, the token does not fit *)
         | next_token :: incoming_toks ->
-            dbg (fun () -> say "  LOOKAHEAD: %s (out of place token)\n" (show_token (snd next_token |> pi1)));
-            let acceptable_tokens, reducible_productions = automaton_possible_moves env (snd next_token |> pi2) in
+            dbg (fun () -> say "  LOOKAHEAD: %s (out of place token)\n" (show_token next_token.t));
+            let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
             let productions = automaton_productions env in
             dbg (fun () -> say "    PROPOSE: reductions: %s\n" (show_prods reducible_productions));
             dbg (fun () -> say "    PROPOSE: tokens: %s\n" (show_gens acceptable_tokens));
@@ -228,16 +233,41 @@ struct
                 handle_unexpected_token ~productions ~next_token ~more_tokens:incoming_toks ~reducible_productions
                   ~acceptable_tokens ~generation_streak:st.generation_streak
               with
-              | TurnInto t ->
+              | TurnIntoError ->
+                  let t =
+                    {
+                      next_token with
+                      t = build_error_token (ErrorToken.mkLexError next_token.s next_token.b next_token.e);
+                    }
+                  in
                   let incoming_toks = t :: incoming_toks in
-                  dbg (fun () -> say "  RECOVERY: turn to %s and push\n" (show_token (snd t |> pi1)));
-                  let chkp = offer (input_needed env) (snd t) in
+                  dbg (fun () ->
+                      say "  RECOVERY: turn %s into %s and push\n" (show_token next_token.t) (show_token t.t));
+                  let chkp = offer (input_needed env) (tok_to_triple t) in
                   loop { st with incoming_toks } chkp
-              | Generate t ->
+              | GenerateHole ->
+                  let b = next_token.b in
+                  let t =
+                    {
+                      s = "_";
+                      t = build_error_token (ErrorToken.mkLexError "_" b b);
+                      b = next_token.b;
+                      e = next_token.b;
+                    }
+                  in
                   let incoming_toks = t :: next_token :: incoming_toks in
-                  dbg (fun () -> say "  RECOVERY: generate %s and push (generation_streak = %d)\n" (fst t) st.generation_streak);
-                  let chkp = offer (input_needed env) (snd t) in
-                  let errbuf = (snd t |> pi2, fst t) :: st.errbuf in
+                  dbg (fun () ->
+                      say "  RECOVERY: generate hole and push (generation_streak = %d)\n" st.generation_streak);
+                  let chkp = offer (input_needed env) (tok_to_triple t) in
+                  let errbuf = (t.b, t.s) :: st.errbuf in
+                  let generation_streak = st.generation_streak + 1 in
+                  loop { st with incoming_toks; errbuf; generation_streak } chkp
+              | GenerateToken t ->
+                  let incoming_toks = t :: next_token :: incoming_toks in
+                  dbg (fun () ->
+                      say "  RECOVERY: generate %s and push (generation_streak = %d)\n" t.s st.generation_streak);
+                  let chkp = offer (input_needed env) (tok_to_triple t) in
+                  let errbuf = (t.b, t.s) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in
                   loop { st with incoming_toks; errbuf; generation_streak } chkp
               | Reduce p ->
@@ -247,8 +277,8 @@ struct
                   loop { st with incoming_toks } chkp
             end
         (* 2. reduce failure, we fold the stack into an error *)
-        | [] -> (assert false;
-            dbg (fun () -> say "  STUCK\n");
+        | [] -> assert false)
+  (* dbg (fun () -> say "  STUCK\n");
             match force_new_error_token env with
             | Empty -> assert false
             | TopIsErr (t, env) ->
@@ -261,7 +291,7 @@ struct
                 dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
                 let t = merge_parse_error t0 t in
                 let chkp = offer (input_needed env) (valid t) in
-                loop st chkp))
+                loop st chkp) *)
 
   let parse lexbuf =
     let chkp = main lexbuf.lex_curr_p in

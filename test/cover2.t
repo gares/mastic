@@ -5,10 +5,10 @@ Coverage
   input: fun $
   READ Parser.FUN
   SHIFT [fun]
-  READ (Parser.ERROR_TOKEN Lex[$])
+  READ (Parser.ERROR_TOKEN [$])
   * ERROR: stack [fun]
-    LOOKAHEAD: (Parser.ERROR_TOKEN Lex[$]) (invalid token)
-    RECOVERY: push (squashed) (Parser.ERROR_TOKEN Lex[fun;$]) on []
+    LOOKAHEAD: (Parser.ERROR_TOKEN [$]) (invalid token)
+    RECOVERY: push (squashed) (Parser.ERROR_TOKEN [fun;$]) on []
   SHIFT [perr]
   READ Parser.EOF
   RED 1 [perr]
