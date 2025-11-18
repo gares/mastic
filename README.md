@@ -164,6 +164,42 @@ Example:
       TurnIntoError
 ```
 
+The `handle_unexpected_token` above
+
+```shell
+$ echo 'fun f ( x := 3 + * )' | dune exec test/main.exe -- 
+random:                            
+input: fun f ( x := 3 + * )
+error:                  ^^  recovered syntax error
+ast: (Ast.Prog.P
+   [(Ast.Func.Fun ("f",
+       [(Ast.Cmd.Assign ("x",
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [*])))))
+         ]
+       ))
+     ])
+```
+Since it turned the offending token `*` into an error.
+
+```shell
+$ echo 'fun f ( x := 3 +  )' | dune exec test/main.exe -- 
+random:                            
+input: fun f ( x := 3 +  )
+error:                   ^ recovered syntax error
+error:                   ^ completed with _
+ast: (Ast.Prog.P
+   [(Ast.Func.Fun ("f",
+       [(Ast.Cmd.Assign ("x",
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [_])))))
+         ]
+       ))
+     ])
+```
+Since it completed with a hole having encountered `RPAREN`. If instead we
+turn `RPAREN` into an error we get:
+
+
+
 ## What is the status of this software?
 
 EXPERIMENTAL
