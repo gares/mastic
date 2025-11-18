@@ -32,9 +32,9 @@ func:
 /* boilerplate */ | e = ERROR_TOKEN;  { Func.of_token e }
 
 list_func:
-| { [] }
-| f = func; l = list_func { f :: l }
-/* boilerplate */ | e = ERROR_TOKEN; { [Func.of_token e] }
+| { List.Nil }
+| f = func; l = list_func { List.Cons(f, l) }
+/* boilerplate */ | e = ERROR_TOKEN; { Func.of_tokenL e }
 
 cmd:
 | IF; e = expr; THEN; t = cmd { Cmd.If(e,t,None)}
@@ -43,10 +43,10 @@ cmd:
 /* boilerplate */ | e = ERROR_TOKEN;  { Cmd.of_token e }
 
 list_cmd:
-| { Func.Nil }
-| c = cmd {  Func.Cons (c, Func.Nil) }
-| c = cmd; SEMICOLON; l = list_cmd { Func.Cons (c, l) }
-/* boilerplate */ | e = ERROR_TOKEN { Func.of_tokenL e }
+| { List.Nil }
+| c = cmd {  List.Cons (c, List.Nil) }
+| c = cmd; SEMICOLON; l = list_cmd { List.Cons (c, l) }
+/* boilerplate */ | e = ERROR_TOKEN { Cmd.of_tokenL e }
 
 expr:
 | i = INT { Expr.Lit i }

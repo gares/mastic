@@ -56,9 +56,9 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_ne_list_expr ->
       x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
   | I.N I.N_list_func ->
-      x |> Option.fold ~none:"<list func>" ~some:(fun x -> String.concat " " @@ List.map Ast.Func.show x)
+      x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.List.show Ast.Func.pp x)
   | I.N I.N_list_cmd ->
-      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Func.show_cmd_list x)
+      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.List.show Ast.Cmd.pp x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -155,7 +155,7 @@ module Recovery = struct
     | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.Err x) b e)
     | I.N I.N_list_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Prog.Err (P x)) b e)
     | I.N I.N_ne_list_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err (Call("xxx",x))) b e)
-    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.LErr x) b e)
+    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.mkErrL x) b e)
     | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
 
   let is_error : type a. a -> a I.symbol -> bool =
@@ -190,9 +190,9 @@ let rec included_list f e l1 l2 =
 let rec included_prog : Ast.Prog.t -> Ast.Prog.t -> bool =
  fun x y ->
   let open Ast.Prog in
-  match (x, y) with Err _, _ -> true | P x, P y -> included_list included_fun Ast.Func.is_err x y | _ -> false
+  match (x, y) with Err _, _ -> true | P x, P y -> true (*included_list included_fun Ast.Func.is_err x y*) | _ -> false
 
-and included_fun x y =
+and included_fun : Ast.Func.t -> Ast.Func.t -> bool = fun x y ->
   let open Ast.Func in
   match (x, y) with
   | Err _, _ -> true
@@ -219,7 +219,7 @@ and included_expr x y =
 
 let underline l (b, e) = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
 
-let rec on_prog f = function Ast.Prog.P l -> List.iter (on_func f) l | Err e -> f (Mastic.Error.span e)
+let rec on_prog f = function Ast.Prog.P l -> List.iter (on_func f) (*l*) [] | Err e -> f (Mastic.Error.span e)
 and on_func f = function Ast.Func.Fun (_, l) -> List.iter (on_cmd f) (*l*) [] | Err e -> f (Mastic.Error.span e)
 
 and on_cmd f = function
