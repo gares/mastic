@@ -168,7 +168,6 @@ The `handle_unexpected_token` above
 
 ```shell
 $ echo 'fun f ( x := 3 + * )' | dune exec test/main.exe -- 
-random:                            
 input: fun f ( x := 3 + * )
 error:                  ^^  recovered syntax error
 ast: (Ast.Prog.P
@@ -183,7 +182,6 @@ Since it turned the offending token `*` into an error.
 
 ```shell
 $ echo 'fun f ( x := 3 +  )' | dune exec test/main.exe -- 
-random:                            
 input: fun f ( x := 3 +  )
 error:                   ^ recovered syntax error
 error:                   ^ completed with _
@@ -195,10 +193,29 @@ ast: (Ast.Prog.P
        ))
      ])
 ```
-Since it completed with a hole having encountered `RPAREN`. If instead we
-turn `RPAREN` into an error we get:
+Since it completed with a hole having encountered `RPAREN`.
 
+If instead we opt for the most basic strategy, i.e. turning all unexpected
+tokens into errors
 
+```ocaml
+  let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens
+      ~reducible_productions:prods ~generation_streak = TurnIntoError
+```
+
+we get:
+
+```shell
+$ echo 'fun f ( x := 3 +  )' | dune exec test/main.exe -- 
+input: fun f ( x := 3 +  )
+error: ^^^^^^^^^^^^^^^^^^^  recovered syntax error
+ast: (Ast.Prog.P
+   [(Ast.Func.Err
+       [(Ast.Cmd.Err [fun;ident;(Ast.Expr.Err [ident;(Ast.Expr.Lit 3););+;:=]);(])])
+     ])
+```
+
+Still note that the AST contains all the tokens.
 
 ## What is the status of this software?
 

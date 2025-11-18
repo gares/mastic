@@ -160,12 +160,10 @@ struct
     errbuf : (position * string) list; (* all tokens inserted *)
     incoming_toks : token tok list; (* the head of the token is the lookahead *)
     generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
+    ticks : int; (* when we reach eof we have at most ticks to terminate *)
   }
 
-  (* let step = ref 0 *)
   let rec loop st (ckpt : ast checkpoint) =
-  (* incr step; *)
-  (* if !step > 40 then exit 9; *)
     match ckpt with
     (* pretty much the definition of error resiliency *)
     | Rejected -> assert false
@@ -184,17 +182,22 @@ struct
         loop st chkp
     (* reading: we save the token into a buffer when empty, and read from the buffer if not empty *)
     | InputNeeded _env ->
+        if st.ticks = 0 then
+           invalid_arg "Mastic: too many loops. This should never happen, please report the issue"
+        else
         let ((tok, _, _) as token), st =
           match st.incoming_toks with
           | t :: _ -> (tok_to_triple t, st)
           | [] ->
               let t = token st.lexbuf in
-              let generation_streak = if is_eof_token t then st.generation_streak else 0 in
+              let generation_streak, ticks =
+                if is_eof_token t then st.generation_streak, st.ticks-1
+                else 0, st.ticks+1 in
               let toks = Lexing.lexeme st.lexbuf in
               let s = if toks = "" then show_token t else toks in
               let b = st.lexbuf.lex_start_p and e = st.lexbuf.lex_curr_p in
               let last_tok = { s; t; b; e } in
-              (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak })
+              (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak; ticks })
         in
         dbg (fun () -> say "READ %s\n" (show_token @@ tok));
         let chkp = offer ckpt token in
@@ -308,6 +311,6 @@ struct
 
   let parse lexbuf =
     let chkp = main lexbuf.lex_curr_p in
-    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = [] } in
+    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = []; ticks=1 } in
     loop st chkp
 end
