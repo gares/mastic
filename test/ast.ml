@@ -44,10 +44,21 @@ module Cmd = struct
       }
 end
 
+type 'a mylist =
+  | Nil
+  | Cons of 'a * 'a mylist
+  | Err of ('a mylist) Error.t
+[@@deriving show]
 module Func = struct
-  type t = Fun of string * Cmd.t list | Err of t Error.t [@@deriving show]
+  type t = Fun of string * cmd_list | Err of t Error.t
+  and cmd_list =
+  | Nil
+  | Cons of Cmd.t * cmd_list
+  | LErr of cmd_list Error.t
+  [@@deriving show]
 
   let is_err = function Err _ -> true | _ -> false
+  let is_lerr = function LErr _ -> true | _ -> false
 
   type ErrorToken.t += Err of t
 
@@ -60,6 +71,19 @@ module Func = struct
         match_ast_error = (function Err x -> Some x | _ -> None);
         build_ast_error = (fun x -> Err x);
       }
+
+  type ErrorToken.t += LErr of cmd_list
+
+  let (ErrorToken.Registered { of_token = of_tokenL }) =
+    ErrorToken.register
+      {
+        show = show_cmd_list;
+        match_token = (function LErr x -> Some x | _ -> None);
+        build_token = (fun x -> LErr x);
+        match_ast_error = (function LErr x -> Some x | _ -> None);
+        build_ast_error = (fun x -> LErr x);
+      }
+
 end
 
 module Prog = struct

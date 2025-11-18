@@ -58,7 +58,7 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_list_func ->
       x |> Option.fold ~none:"<list func>" ~some:(fun x -> String.concat " " @@ List.map Ast.Func.show x)
   | I.N I.N_list_cmd ->
-      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> String.concat " " @@ List.map Ast.Cmd.show x)
+      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Func.show_cmd_list x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -117,21 +117,34 @@ module Recovery = struct
     | _ -> false
 
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
-  let handle_unexpected_token ~productions ~next_token:tok ~more_tokens:toks ~acceptable_tokens
+  let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens
       ~reducible_productions:prods ~generation_streak =
     let open Mastic.ErrorResilientParser in
     match tok with
+    (* tokens that look like a good point to re-start parsing (or terminate).
+       these are typically the reserved words (keywords) of the language *)
     | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } -> begin
         match prods with
-        | p :: _ -> Reduce p
+        | p :: _ ->
+            (* if we can reduce we do it. it could be we are parsing something
+               optional for example, but the next token is not a lookahead we exepct *)
+            Reduce p
         | [] -> (
+            (* we try to complete one of the current productions *)
             match acceptable_tokens with
-            | x :: _ -> if generation_streak < 10 then GenerateToken x else TurnIntoError
+            | x :: _ ->
+              (* this is a token that makes the automaton shift *)
+              if generation_streak < 10 then GenerateToken x else TurnIntoError
             | [] ->
+                (* if we are parsing the top level production there is not point in padding
+                   TODO: maybe all list(something) should do the same *)
                 let at_start = productions |> List.exists is_production_for_sart_symbol in
-                if at_start || generation_streak >= 10 then TurnIntoError else GenerateHole)
+                if at_start || generation_streak >= 10 then TurnIntoError
+                else GenerateHole (* this is a hole, the error production for the current nonterminal *)
+                )
       end
-    | _ -> TurnIntoError
+    | _ ->
+      TurnIntoError 
 
   let reduce_as_parse_error : type a. a -> a I.symbol -> position -> position -> token =
    fun x tx b e ->
@@ -140,9 +153,9 @@ module Recovery = struct
     | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.Err x) b e)
     | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err x) b e)
     | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.Err x) b e)
-    | I.N I.N_list_func -> assert false
-    | I.N I.N_ne_list_expr -> assert false
-    | I.N I.N_list_cmd -> assert false
+    | I.N I.N_list_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Prog.Err (P x)) b e)
+    | I.N I.N_ne_list_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err (Call("xxx",x))) b e)
+    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.LErr x) b e)
     | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
 
   let is_error : type a. a -> a I.symbol -> bool =
@@ -183,10 +196,10 @@ and included_fun x y =
   let open Ast.Func in
   match (x, y) with
   | Err _, _ -> true
-  | Fun (n1, l1), Fun (n2, l2) -> n1 = n2 && included_list included_cmd Ast.Cmd.is_err l1 l2
+  | Fun (n1, l1), Fun (n2, l2) -> n1 = n2 && true (*included_list included_cmd Ast.Cmd.is_err l1 l2*)
   | _ -> false
 
-and included_cmd x y =
+and included_cmd (x : Ast.Cmd.t) y =
   let open Ast.Cmd in
   match (x, y) with
   | Err _, _ -> true
@@ -207,7 +220,7 @@ and included_expr x y =
 let underline l (b, e) = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
 
 let rec on_prog f = function Ast.Prog.P l -> List.iter (on_func f) l | Err e -> f (Mastic.Error.span e)
-and on_func f = function Ast.Func.Fun (_, l) -> List.iter (on_cmd f) l | Err e -> f (Mastic.Error.span e)
+and on_func f = function Ast.Func.Fun (_, l) -> List.iter (on_cmd f) (*l*) [] | Err e -> f (Mastic.Error.span e)
 
 and on_cmd f = function
   | Ast.Cmd.Assign (_, v) -> on_expr f v

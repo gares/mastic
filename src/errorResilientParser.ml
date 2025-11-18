@@ -39,7 +39,6 @@ module type Recovery = sig
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
     next_token:token tok ->
-    more_tokens:token tok list ->
     acceptable_tokens:token tok list ->
     reducible_productions:production list ->
     generation_streak:int ->
@@ -81,10 +80,10 @@ struct
 
   let try_pop env = match pop env with Some x -> x | None -> env
 
-  (* type _ two_errors =
+  type _ two_errors =
     | Empty
     | TopIsErr : token * 'x env -> 'x two_errors
-    | Top2AreErr : token * token * 'x env -> 'x two_errors *)
+    | Top2AreErr : token * token * 'x env -> 'x two_errors
 
   let ensure_top_is_error_token env =
     match top env with
@@ -93,15 +92,13 @@ struct
         let tx = incoming_symbol tx in
         Some (is_error x tx, reduce_as_parse_error x tx b e, try_pop env)
 
-  (* let force_new_error_token env =
+  let ensure_top2_are_error_token env =
     match ensure_top_is_error_token env with
     | None -> Empty
-    | Some (was_err, x, env1) -> (
-        if was_err then TopIsErr (x, env1)
-        else
+    | Some (_, x, env1) -> (
           match ensure_top_is_error_token env1 with
-          | None -> failwith "the grammar must include an atom for parse error 1"
-          | Some (_, y, env2) -> Top2AreErr (x, y, env2)) *)
+          | None -> TopIsErr(x,env1)
+          | Some (_, y, env2) -> Top2AreErr (x, y, env2))
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -165,7 +162,10 @@ struct
     generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
   }
 
+  (* let step = ref 0 *)
   let rec loop st (ckpt : ast checkpoint) =
+  (* incr step; *)
+  (* if !step > 40 then exit 9; *)
     match ckpt with
     (* pretty much the definition of error resiliency *)
     | Rejected -> assert false
@@ -230,9 +230,22 @@ struct
               match
                 (* TODO: do not receive incoming_tokens, the action forces them *)
                 (* TODO: can incoming tokens be more than 1 token? maybe generate could return a list? *)
-                handle_unexpected_token ~productions ~next_token ~more_tokens:incoming_toks ~reducible_productions
+                handle_unexpected_token ~productions ~next_token ~reducible_productions
                   ~acceptable_tokens ~generation_streak:st.generation_streak
               with
+              | TurnIntoError when is_eof_token next_token.t ->
+                  begin match ensure_top2_are_error_token env with
+                  | Empty
+                  | TopIsErr _ -> assert false
+                  | Top2AreErr (x,y,env) ->
+                      let t = merge_parse_error x y in (* TODO: fix locs *)
+                  let _,b,e as valid = valid t in
+
+                  let chkp = offer (input_needed env) valid in
+                  let incoming_toks = { t ; s = ""; b; e } :: incoming_toks in
+                  loop { st with incoming_toks } chkp
+
+                  end
               | TurnIntoError ->
                   let t =
                     {

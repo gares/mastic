@@ -43,10 +43,10 @@ cmd:
 /* boilerplate */ | e = ERROR_TOKEN;  { Cmd.of_token e }
 
 list_cmd:
-| { [] }
-| c = cmd { [ c] }
-| c = cmd; SEMICOLON; l = list_cmd { c :: l }
-/* boilerplate */ | e = ERROR_TOKEN { [Cmd.of_token e] }
+| { Func.Nil }
+| c = cmd {  Func.Cons (c, Func.Nil) }
+| c = cmd; SEMICOLON; l = list_cmd { Func.Cons (c, l) }
+/* boilerplate */ | e = ERROR_TOKEN { Func.of_tokenL e }
 
 expr:
 | i = INT { Expr.Lit i }

@@ -29,7 +29,6 @@ module type Recovery = sig
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
     next_token:token tok ->
-    more_tokens:token tok list ->
     acceptable_tokens:token tok list ->
     reducible_productions:production list ->
     generation_streak:int ->
