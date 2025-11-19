@@ -14,7 +14,7 @@
 %token SEMICOLON
 %token <string> IDENT
 /* boilerplate */ %token EOF
-/* boilerplate */ %token <Mastic.ErrorToken.t Mastic.Error.located> ERROR_TOKEN
+/* boilerplate */ %token <Mastic.Error.t> ERROR_TOKEN
 
 %left PLUS
 %left TIMES

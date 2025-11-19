@@ -1,11 +1,11 @@
-type 'a t = Nil | Cons of 'a * 'a t | Err of string * 'a t Error.t
+type 'a t = Nil | Cons of 'a * 'a t | Err of string * Error.t
 
-let rec pp f fmt l =
+let pp f fmt l =
   let rec pp1 fmt = function
     | Nil -> ()
     | Cons(x,Nil) -> f fmt x
     | Cons(x,xs) -> f fmt x; Format.fprintf fmt ";@ "; pp1 fmt xs
-    | Err(_,e) -> Error.pp (pp f) fmt e in
+    | Err(_,e) -> Error.pp fmt e in
   Format.fprintf fmt "@[<hov 2>[%a]@]" pp1 l
 
 let show f x = Format.asprintf "%a" (pp f) x
@@ -27,28 +27,33 @@ let rec has_err = function Nil -> false | Cons(_,xs) -> has_err xs | Err _ -> tr
 
 module type ListArg = sig val name : string type t val pp : Format.formatter -> t -> unit end
 module type ListSig = functor(X : ListArg) -> sig
-  type nonrec t = X.t t
+type nonrec t = X.t t
+type Error.t_ += List of t
   val name : string
   val pp : Format.formatter -> t -> unit
   val show : t -> string
-  val of_token : ErrorToken.t Error.located -> t
-  val build_token : t -> ErrorToken.t
-  val match_token : ErrorToken.t -> t option
+  val of_token : Error.t -> t
+  val build_token : t Error.located -> Error.t
+  (* val match_token : ErrorToken.t -> t option *)
   val is_err : t -> bool
-  val iter : (X.t -> unit) -> (string Error.located -> unit) -> t -> unit
+  val iter : (X.t -> unit) -> (Error.t_ Error.located -> unit) -> t -> unit
 end
 
 module Of : ListSig = functor(X : ListArg) -> struct
   type t_ = X.t t [@@deriving show]
   type t = t_ [@@deriving show]
-  let name = X.name
+  let name = (X.name ^ " List.t")
 
-    let (ErrorToken.Registered { of_token; build_token; match_token; is_err }) =
-      ErrorToken.register (X.name ^ " List.t")
+  type Error.t_ += List of t
+
+    let (Error.Registered { of_token; build_token; is_err }) =
+      Error.register name
         {
-          show = show;
-          match_ast_error = (function Err (n, x) when n = X.name -> Some x | _ -> None);
-          build_ast_error = (fun x -> Err (X.name, x));
+          pp;
+          match_ast = (function Err (n, x) when n = X.name -> Some x | _ -> None);
+          build_ast = (fun x -> Err (X.name, x));
+          match_error = (function List x -> Some x | _ -> None);
+          build_error = (fun x -> List x);
         }
 
 
@@ -58,6 +63,6 @@ module Of : ListSig = functor(X : ListArg) -> struct
         f x;
         iter f g xs
     | Err(n,e) -> assert(n = X.name);
-        Error.iter (fun l -> iter f g (Error.unloc l)) g e
+        List.iter g e
 end
 

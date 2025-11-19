@@ -2,7 +2,7 @@
  (name mastic)
  (preprocess
   (pps ppx_deriving.std))
- (modules error errorToken errorList errorResilientParser)
+ (modules error errorList errorResilientParser)
  (wrapped true)
  (libraries menhirLib)
  (package mastic))

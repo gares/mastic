@@ -33,8 +33,8 @@ module type Recovery = sig
   type production
 
   val token_of_terminal : 'a terminal -> (string * token) option
-  val match_error_token : token -> ErrorToken.t Error.located option
-  val build_error_token : ErrorToken.t Error.located -> token
+  val match_error_token : token -> Error.t option
+  val build_error_token : Error.t -> token
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
@@ -108,7 +108,7 @@ struct
     | None -> []
     | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
-  let valid t = match match_error_token t with None -> assert false | Some x -> (t, Error.bloc x, Error.eloc x)
+  let valid t = match match_error_token t with None -> assert false | Some x -> let b,e = Error.span x in (t, b, e)
   let is_error_token x = match match_error_token x with None -> false | _ -> true
   let show_element elt = match elt with Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
 
@@ -256,7 +256,7 @@ struct
                   let t =
                     {
                       next_token with
-                      t = build_error_token (ErrorToken.mkLexError next_token.s next_token.b next_token.e);
+                      t = build_error_token Error.(mkLexError (loc next_token.s next_token.b next_token.e));
                     }
                   in
                   let incoming_toks = t :: incoming_toks in
@@ -269,7 +269,7 @@ struct
                   let t =
                     {
                       s = "_";
-                      t = build_error_token (ErrorToken.mkLexError "_" b b);
+                      t = build_error_token Error.(mkLexError (loc "_" b b));
                       b = next_token.b;
                       e = next_token.b;
                     }

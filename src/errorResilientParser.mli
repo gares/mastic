@@ -23,8 +23,8 @@ module type Recovery = sig
   type production
 
   val token_of_terminal : 'a terminal -> (string * token) option
-  val match_error_token : token -> ErrorToken.t Error.located option
-  val build_error_token : ErrorToken.t Error.located -> token
+  val match_error_token : token -> Error.t option
+  val build_error_token : Error.t -> token
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->

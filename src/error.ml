@@ -2,11 +2,8 @@ open Lexing
 
 type 'a located = 'a * position * position
 
-let pp_located f fmt (s, b, e) = Format.fprintf fmt "('%a',%d,%d)" f s b.pos_cnum e.pos_cnum
+let pp_located f fmt (s, b, e) = Format.fprintf fmt "(%a,%d,%d)" f s b.pos_cnum e.pos_cnum
 let show_located f x = Format.asprintf "%a" (pp_located f) x
-
-type 'a t_ = Lex of string | Ast of 'a
-type 'a t = 'a t_ located list
 
 let loc x b e = (x, b, e)
 let unloc (x, _, _) = x
@@ -14,7 +11,52 @@ let bloc (_, b, _) = b
 let eloc (_, _, e) = e
 let view x = x
 let map f (x, b, e) = (f x, b, e)
-let iter f g l = List.iter (fun (x,b,e) -> match x with Lex s -> g (s,b,e) | Ast s -> f (s,b,e)) l
+
+type t_ = ..
+type t = t_ located list
+
+type 'a registration = {
+  pp : Format.formatter -> 'a -> unit;
+  match_ast : 'a -> t option;
+  build_ast : t -> 'a;
+  match_error : t_ -> 'a option;
+  build_error : 'a -> t_;
+}
+
+type 'a registered =
+  Registered of {
+    of_token : t -> 'a;
+    build_token : 'a located -> t;
+    is_err : 'a -> bool
+  }
+
+module SM = Map.Make(String)
+
+type xregistration = Registration : 'a registration -> xregistration
+
+let registered = ref SM.empty
+
+let register name r : 'a registered =
+  if SM.mem name !registered then
+    failwith ("error " ^ name ^ " already registered");
+  registered := SM.add name (Registration r) !registered;
+  Registered {
+    is_err = (fun x -> match r.match_ast x with Some _ -> true | None -> false);
+    of_token = (fun x -> r.build_ast x);
+    build_token = (fun x -> [ map r.build_error x ])
+  }
+
+type t_ += Lex of string
+
+let Registered { build_token = mkLexError } = register "__lex__" {
+  pp = (fun fmt x -> Format.fprintf fmt "'%s'" x);
+  match_ast = (fun _ -> None);
+  build_ast = (fun _ -> assert false);
+  match_error = (function Lex s -> Some s | _ -> None);
+  build_error = (fun x -> Lex x)
+}
+
+(* let iter f g l = List.iter (fun (x,b,e) -> match x with Lex s -> g (s,b,e) | Ast s -> f (s,b,e)) l *)
 let min_pos p1 p2 = if p1.pos_cnum < p2.pos_cnum then p1 else p2
 let max_pos p1 p2 = if p1.pos_cnum > p2.pos_cnum then p1 else p2
 
@@ -24,10 +66,15 @@ let span l =
 
 let merge = ( @ )
 
-let pp f fmt e =
-  let f fmt = function
-    | Ast a -> f fmt a
-    | Lex s -> Format.fprintf fmt "%s" s in
+let pp fmt e =
+  let f fmt x =
+    let rec aux = function
+    | [] -> assert false
+    | (_,Registration r) :: rest ->
+        match r.match_error (unloc x) with
+        | Some v -> pp_located r.pp fmt (loc v (bloc x) (eloc x))
+        | None -> aux rest
+    in aux (SM.bindings !registered) in
   Format.fprintf fmt "@[<hov 2>[%a]@]"
-    (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ";") (pp_located f)) e
-let show f x = Format.asprintf "%a" (pp f) x
+    (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") f) e
+let show x = Format.asprintf "%a" pp x

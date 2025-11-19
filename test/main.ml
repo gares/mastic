@@ -22,7 +22,7 @@ type token = Parser.token =
   | IF
   | IDENT of string
   | FUN
-  | ERROR_TOKEN of Mastic.ErrorToken.t Mastic.Error.located
+  | ERROR_TOKEN of Mastic.Error.t
   | EOF
   | ELSE
   | ASSIGN
@@ -123,7 +123,7 @@ module Recovery = struct
     match tok with
     (* tokens that look like a good point to re-start parsing (or terminate).
        these are typically the reserved words (keywords) of the language *)
-    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } (*when false*) -> begin
+    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } -> begin
         match prods with
         | p :: _ ->
             (* if we can reduce we do it. it could be we are parsing something
@@ -150,13 +150,13 @@ module Recovery = struct
    fun x tx b e ->
     match tx with
     | I.N I.N_main -> assert false
-    | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.build_token x) b e)
-    | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.build_token x) b e)
-    | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.build_token x) b e)
-    | I.N I.N_list_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.List.build_token x) b e)
-    | I.N I.N_ne_list_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.List.build_token x) b e)
-    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.List.build_token x) b e)
-    | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
+    | I.N I.N_cmd -> ERROR_TOKEN (Ast.Cmd.build_token (Mastic.Error.loc x b e))
+    | I.N I.N_expr -> ERROR_TOKEN (Ast.Expr.build_token (Mastic.Error.loc x b e))
+    | I.N I.N_func -> ERROR_TOKEN (Ast.Func.build_token (Mastic.Error.loc x b e))
+    | I.N I.N_list_func -> ERROR_TOKEN (Ast.Func.List.build_token (Mastic.Error.loc x b e))
+    | I.N I.N_ne_list_expr -> ERROR_TOKEN (Ast.Expr.List.build_token (Mastic.Error.loc x b e))
+    | I.N I.N_list_cmd -> ERROR_TOKEN (Ast.Cmd.List.build_token (Mastic.Error.loc x b e))
+    | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (show_terminal y) b e))
 
   let is_error : type a. a -> a I.symbol -> bool =
    fun x tx ->
@@ -170,7 +170,7 @@ module Recovery = struct
   let merge_parse_error x y =
     let open Mastic in
     let open Parser in
-    match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (ErrorToken.merge x y) | _ -> assert false
+    match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (Error.merge x y) | _ -> assert false
 
   let is_eof_token = function EOF -> true | _ -> false
 end
@@ -211,39 +211,61 @@ and included_expr x y =
   | Call (f, xs), Call (g, ys) -> f = g && Mastic.ErrorList.included included_expr is_err xs ys
   | _ -> false
 
-let underline l (b, e) = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
-let onloc f x = f (Mastic.Error.bloc x,Mastic.Error.eloc x)
-let rec on_prog f = function Ast.Prog.P l -> Ast.Func.List.iter (on_func f) (onloc f) l | Err e -> f (Mastic.Error.span e)
-and on_func f = function Ast.Func.Fun (_, l) -> Ast.Cmd.List.iter (on_cmd f) (onloc f) l | Err e -> f (Mastic.Error.span e)
+let rec iter_err b e f = function
+  | Mastic.Error.Lex s as x -> f x b e
+  | Ast.Expr.Expr e -> iter_expr f e
+  | Ast.Expr.List.List e -> Ast.Expr.List.iter (iter_expr f) (iter_loc f) e
+  | Ast.Cmd.Cmd e -> iter_cmd f e
+  | Ast.Cmd.List.List e -> Ast.Cmd.List.iter (iter_cmd f) (iter_loc f) e
+  | Ast.Prog.Prog e -> iter_prog f e
+  | Ast.Func.Func e -> iter_func f e
+  | Ast.Func.List.List e -> Ast.Func.List.iter (iter_func f) (iter_loc f) e
+  | _ -> ()
 
-and on_cmd f = function
-  | Ast.Cmd.Assign (_, v) -> on_expr f v
-  | Ast.Cmd.If (v, t, None) ->
-      on_expr f v;
-      on_cmd f t
-  | Ast.Cmd.If (v, t, Some e) ->
-      on_expr f v;
-      on_cmd f t;
-      on_cmd f e
-  | Err e -> f (Mastic.Error.span e)
+and iter_loc f x =
+  let b = Mastic.Error.bloc x in
+  let e = Mastic.Error.eloc x in
+  iter_err b e f (Mastic.Error.unloc x)
 
-and on_expr f = function
+and iter_expr f = function
   | Ast.Expr.Add (e1, e2) ->
-      on_expr f e1;
-      on_expr f e2
+    iter_expr f e1;
+    iter_expr f e2
   | Ast.Expr.Mul (e1, e2) ->
-      on_expr f e1;
-      on_expr f e2
-  | Ast.Expr.Call (_, l) -> Ast.Expr.List.iter (on_expr f) (onloc f) l
+    iter_expr f e1;
+    iter_expr f e2
+  | Ast.Expr.Call (_, l) -> Ast.Expr.List.iter (iter_expr f) (iter_loc f) l
   | Ast.Expr.Lit _ -> ()
-  | Err e -> f (Mastic.Error.span e)
+  | Err e -> List.iter (iter_loc f) e
+
+and iter_func f = function
+  | Ast.Func.Fun(_,l) -> Ast.Cmd.List.iter (iter_cmd f) (iter_loc f) l
+  | Ast.Func.Err e -> List.iter (iter_loc f) e
+
+and iter_cmd f = function
+  | Ast.Cmd.Assign (_, v) -> iter_expr f v
+  | Ast.Cmd.If (v, t, None) ->
+      iter_expr f v;
+      iter_cmd f t
+  | Ast.Cmd.If (v, t, Some e) ->
+      iter_expr f v;
+      iter_cmd f t;
+      iter_cmd f e
+  | Err e -> List.iter (iter_loc f) e
+
+and iter_prog f = function
+  | Ast.Prog.P l -> Ast.Func.List.iter (iter_func f) (iter_loc f) l
+  | Ast.Prog.Err e -> List.iter (iter_loc f) e
+
+
+let underline l _ b e = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
 
 let show_result header line errbuf v =
   let my_header = "error: " in
   let padding = String.length header - String.length my_header in
   let padding = String.make padding ' ' in
   let b = String.to_bytes (String.make (String.length line) ' ') in
-  on_prog (underline b) v;
+  iter_prog (underline b) v;
   let b = String.of_bytes b in
   if String.index_opt b '^' <> None then Printf.printf "%s%s%s recovered syntax error\n" my_header padding b;
   List.rev errbuf
