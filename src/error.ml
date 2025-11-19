@@ -2,8 +2,8 @@ open Lexing
 
 type 'a located = 'a * position * position
 
-let pp_located f fmt (s, _, _) = f fmt s
-let show_located f (s, _, _) = Format.asprintf "%a" f s
+let pp_located f fmt (s, b, e) = Format.fprintf fmt "('%a',%d,%d)" f s b.pos_cnum e.pos_cnum
+let show_located f x = Format.asprintf "%a" (pp_located f) x
 
 type 'a t_ = Lex of string | Ast of 'a
 type 'a t = 'a t_ located list
@@ -24,9 +24,10 @@ let span l =
 
 let merge = ( @ )
 
-let show show_a l =
-  Printf.sprintf "[%s]" (String.concat ";" @@ (List.map unloc l |> List.map (function Lex s -> s | Ast a -> show_a a)))
-
 let pp f fmt e =
-  let f x = Format.asprintf "%a" f x in
-  Format.fprintf fmt "%s" (show f e)
+  let f fmt = function
+    | Ast a -> f fmt a
+    | Lex s -> Format.fprintf fmt "%s" s in
+  Format.fprintf fmt "@[<hov 2>[%a]@]"
+    (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ";") (pp_located f)) e
+let show f x = Format.asprintf "%a" (pp f) x

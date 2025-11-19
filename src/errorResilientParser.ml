@@ -237,12 +237,15 @@ struct
                   ~acceptable_tokens ~generation_streak:st.generation_streak
               with
               | TurnIntoError when is_eof_token next_token.t ->
+
                   begin match ensure_top2_are_error_token env with
                   | Empty
                   | TopIsErr _ -> assert false
                   | Top2AreErr (x,y,env) ->
                       let t = merge_parse_error x y in (* TODO: fix locs *)
                   let _,b,e as valid = valid t in
+                  dbg (fun () ->
+                      say "  RECOVERY: squash %s and %s and push\n" (show_token x) (show_token y));
 
                   let chkp = offer (input_needed env) valid in
                   let incoming_toks = { t ; s = ""; b; e } :: incoming_toks in

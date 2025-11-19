@@ -123,7 +123,7 @@ module Recovery = struct
     match tok with
     (* tokens that look like a good point to re-start parsing (or terminate).
        these are typically the reserved words (keywords) of the language *)
-    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } -> begin
+    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } (*when false*) -> begin
         match prods with
         | p :: _ ->
             (* if we can reduce we do it. it could be we are parsing something

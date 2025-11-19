@@ -1,4 +1,4 @@
-type 'a t = Nil | Cons of 'a * 'a t | Err of string * 'a t Error.t [@@deriving show]
+type 'a t = Nil | Cons of 'a * 'a t | Err of string * 'a t Error.t
 
 let rec pp f fmt l =
   let rec pp1 fmt = function
@@ -7,6 +7,8 @@ let rec pp f fmt l =
     | Cons(x,xs) -> f fmt x; Format.fprintf fmt ";@ "; pp1 fmt xs
     | Err(_,e) -> Error.pp (pp f) fmt e in
   Format.fprintf fmt "@[<hov 2>[%a]@]" pp1 l
+
+let show f x = Format.asprintf "%a" (pp f) x
 
 let rec included f e l1 l2 =
   match (l1, l2) with

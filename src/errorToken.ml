@@ -14,12 +14,18 @@ type register = Token : string * 'a registration -> register
 let registered = ref []
 
 let lex_error = "LexError.t"
-let mkLexError s b e = Error.loc (Dyn(lex_error,Obj.repr [ Error.loc s b e ])) b e
+type lex_error_ty = string Error.located list
+let mkLexError s b e =
+  let v : lex_error_ty = [Error.loc s b e] in
+  Error.loc (Dyn(lex_error,Obj.repr v)) b e
 
-let show x =
+let show (Dyn(m,x)) =
+  if m = lex_error then
+    Obj.obj x
+  else
   let rec aux = function
-    | [] -> assert false
-    | Token(n,t) :: ps -> ( match x with Dyn(m,x) when n = m -> t.show (Obj.obj x) | _ -> aux ps)
+    | [] -> Printf.sprintf "<unregistered token %s>" m
+    | Token(n,t) :: ps -> if n = m then t.show (Obj.obj x) else aux ps
   in
   aux !registered
 
@@ -29,23 +35,52 @@ let of_token s ({ match_ast_error; build_ast_error } : 'a registration) : t Erro
  fun x ->
   let b = Error.bloc x in
   let e = Error.eloc x in
-  let Dyn(n,x) = Error.unloc x in
-  let x = Obj.obj x in
-  if n = lex_error then build_ast_error (List.map inject_lex x)
-  else if n = s then ( match match_ast_error x with Some _ -> x | None -> build_ast_error [ inject_ast (Error.loc x b e) ])
-  else build_ast_error [ inject_lex (Error.loc (show x) b e) ]
+  let Dyn(n,v) as x = Error.unloc x in
+  if n = lex_error then
+    let s : lex_error_ty = Obj.obj v in
+     build_ast_error (List.map inject_lex s)
+  else if n = s then 
+    let a : 'a = Obj.obj v in
+    match match_ast_error a with
+    | Some _ -> a
+    | None -> build_ast_error [ inject_ast (Error.loc a b e) ]
+  else
+    let s = show x in
+    build_ast_error [inject_lex (Error.loc s b e)]
 
 let match_token s (Dyn(n,o)) = if s = n then Some (Obj.obj o) else None
 let build_token s o = Dyn(s,Obj.repr o)
 
+let registration_of n =
+  let rec aux = function
+    | [] -> assert false
+    | Token(s,_) as x :: _ when s = n -> x
+    | _ :: ts -> aux ts
+  in
+    aux !registered
+
 let merge (x : t Error.located) (y : t Error.located) : t Error.located =
-  let x, bx, ex = Error.view x in
-  let y, by, ey = Error.view y in
+  let Dyn(nx,vx) as x, bx, ex = Error.view x in
+  let Dyn(ny,vy) as y, by, ey = Error.view y in
+  (* if nx = lex_error then
+    let vx : lex_error_ty = Obj.magic vx in
+    let Token(_,t) = registration_of ny in
+    let y = Option.get @@ t.match_ast_error (Option.get (match_token ny y)) in
+    Error.loc (build_token ny @@ t.build_ast_error (Error.merge (List.map inject_lex vx) y)) bx ey
+  else if ny = lex_error then
+    let vy : lex_error_ty = Obj.magic vy in
+    let Token(_,t) = registration_of nx in
+    let x = Option.get @@ t.match_ast_error (Option.get (match_token nx x)) in
+    Error.loc (build_token nx @@ t.build_ast_error (Error.merge (List.map inject_lex vy) x)) bx ey
+  else *)
   let rec aux = function
     | [] -> assert false
     | Token(s,t) :: ps -> (
         let match_ast_error ba ea a =
-          match t.match_ast_error a with Some x -> x | None -> [ inject_ast Error.(loc a ba ea) ]
+          match t.match_ast_error a with
+          | Some x -> x
+          | None -> 
+            [ inject_ast Error.(loc a ba ea) ]
         in
         match (match_token s x, match_token s y) with
         | Some x, Some y ->
@@ -79,8 +114,10 @@ let register : type a. string -> a registration -> a registered = fun s t ->
   registered := Token(s,t) :: !registered;
   Registered { of_token = of_token s t; match_token = match_token s; build_token = build_token s; is_err = is_err t }
 
-let _ : string Error.located list registered =
-  let show l = "[" ^ String.concat ";" (List.map Error.unloc l) ^ "]" in
+let _ : lex_error_ty registered =
+  let show l =
+     Format.asprintf "Lex[%a]"
+       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ";") (Error.pp_located Format.pp_print_string)) l in
   register lex_error
     {
       show;

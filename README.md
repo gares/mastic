@@ -66,23 +66,18 @@ expr:
 
 And the ast should have the following boilerplate
 
-```
+```ocaml
 module Expr = struct
   type t =
     | ...
     | Err of t Error.t
+    [@@deriving show]
 
-  let is_err = function Err _ -> true | _ -> false
-  type ErrorToken.t += Err of t
-  let (ErrorToken.Registered { of_token }) =
-    ErrorToken.register
-      {
-        show;
-        match_token = (function Err x -> Some x | _ -> None);
-        build_token = (fun x -> Err x);
+  let (ErrorToken.Registered { of_token; match_token; build_token; is_err }) =
+    ErrorToken.register "Expr.t"
+      { show;
         match_ast_error = (function Err x -> Some x | _ -> None);
-        build_ast_error = (fun x -> Err x);
-      }
+        build_ast_error = (fun x -> Err x) }
 end
 ```
 
@@ -93,7 +88,7 @@ Maybe one day these changes will be generated automatically.
 Given Menhir's interpreter `I` and the `IncrementalParser` it generates (roughly),
 one has to provide a `Recovery`
 
-```
+```ocaml
 module ERParser = Mastic.ErrorResilientParser.Make (I) (IncrementalParser) (Recovery)
 let extra_tokens, ast = ERParser.parse lexbuf
 ```
@@ -173,10 +168,8 @@ error:                  ^^  recovered syntax error
 ast: (Ast.Prog.P
    [(Ast.Func.Fun ("f",
        [(Ast.Cmd.Assign ("x",
-           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [*])))))
-         ]
-       ))
-     ])
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [*])))))]
+       ))])
 ```
 Since it turned the offending token `*` into an error.
 
@@ -188,10 +181,8 @@ error:                   ^ completed with _
 ast: (Ast.Prog.P
    [(Ast.Func.Fun ("f",
        [(Ast.Cmd.Assign ("x",
-           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [_])))))
-         ]
-       ))
-     ])
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [_])))))]
+       ))])
 ```
 Since it completed with a hole having encountered `RPAREN`.
 
@@ -208,11 +199,10 @@ we get:
 ```shell
 $ echo 'fun f ( x := 3 +  )' | dune exec test/main.exe -- 
 input: fun f ( x := 3 +  )
-error: ^^^^^^^^^^^^^^^^^^^  recovered syntax error
+error: ^^^^^^^^            recovered syntax error
 ast: (Ast.Prog.P
    [(Ast.Func.Err
-       [(Ast.Cmd.Err [fun;ident;(Ast.Expr.Err [ident;(Ast.Expr.Lit 3););+;:=]);(])])
-     ])
+       [(Ast.Cmd.Err [fun;ident;(Ast.Expr.Err [ident;(Ast.Expr.Lit 3););+;:=]);(])])])
 ```
 
 Still note that the AST contains all the tokens.
