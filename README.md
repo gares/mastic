@@ -70,14 +70,17 @@ And the ast should have the following boilerplate
 module Expr = struct
   type t =
     | ...
-    | Err of t Error.t
+    | Err of Error.t
     [@@deriving show]
 
-  let (ErrorToken.Registered { of_token; match_token; build_token; is_err }) =
-    ErrorToken.register "Expr.t"
-      { show;
-        match_ast_error = (function Err x -> Some x | _ -> None);
-        build_ast_error = (fun x -> Err x) }
+  type Error.t_ += Expr of t
+  let (Error.Registered { of_token; build_token; is_err }) =
+    Error.register "Expr.t"
+      { pp;
+        match_ast = (function Err x -> Some x | _ -> None);
+        build_ast = (fun x -> Err x);
+        match_error = (function Expr x -> Some x | _ -> None);
+        build_error = (fun x -> Expr x) }
 end
 ```
 
@@ -168,7 +171,7 @@ error:                  ^^  recovered syntax error
 ast: (Ast.Prog.P
    [(Ast.Func.Fun ("f",
        [(Ast.Cmd.Assign ("x",
-           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [*])))))]
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [('*',17,18)])))))]
        ))])
 ```
 Since it turned the offending token `*` into an error.
@@ -181,7 +184,7 @@ error:                   ^ completed with _
 ast: (Ast.Prog.P
    [(Ast.Func.Fun ("f",
        [(Ast.Cmd.Assign ("x",
-           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [_])))))]
+           (Ast.Expr.Add ((Ast.Expr.Lit 3), (Ast.Expr.Err [('_',18,18)])))))]
        ))])
 ```
 Since it completed with a hole having encountered `RPAREN`.
@@ -199,10 +202,16 @@ we get:
 ```shell
 $ echo 'fun f ( x := 3 +  )' | dune exec test/main.exe -- 
 input: fun f ( x := 3 +  )
-error: ^^^^^^^^            recovered syntax error
+error: ^^^^^^^^^^^^^  ^^ ^ recovered syntax error
 ast: (Ast.Prog.P
    [(Ast.Func.Err
-       [(Ast.Cmd.Err [fun;ident;(Ast.Expr.Err [ident;(Ast.Expr.Lit 3););+;:=]);(])])])
+       [('fun',0,3); ('ident',4,5);
+         ((Ast.Cmd.Err
+             [('ident',8,9);
+               ((Ast.Expr.Err
+                   [((Ast.Expr.Lit 3),13,14);
+                     ((Ast.Expr.Err [(')',18,19)]),18,19); ('+',15,16)]),13,19);
+               (':=',10,12)]),8,19); ('(',6,7)])])
 ```
 
 Still note that the AST contains all the tokens.
