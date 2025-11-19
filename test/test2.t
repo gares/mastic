@@ -10,40 +10,45 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [('_',19,19)])]))]))]
                 ))
              ))]
          ))])
   
   fuzzed input #1: fun   ( x := f x y )
-  error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
+  error:           ^^^^  ^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('fun',0,3); ('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #2: fun f$( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;ident;$]); (Ast.Func.Err [(]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [:=]); (Ast.Func.Err [f]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [y]); (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('fun',0,3); ('ident',4,5); ('$',5,6)]);
+       (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #3: fu$ f ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fu]); (Ast.Func.Err [$]); (Ast.Func.Err [f]);
-       (Ast.Func.Err [(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('fu',0,2)]); (Ast.Func.Err [('$',2,3)]);
+       (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
+       (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
+       (Ast.Func.Err [('f',13,14)]); (Ast.Func.Err [('x',15,16)]);
+       (Ast.Func.Err [('y',17,18)]); (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #4: f n f ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [f]); (Ast.Func.Err [n]); (Ast.Func.Err [f]);
-       (Ast.Func.Err [(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('f',0,1)]); (Ast.Func.Err [('n',2,3)]);
+       (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
+       (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
+       (Ast.Func.Err [('f',13,14)]); (Ast.Func.Err [('x',15,16)]);
+       (Ast.Func.Err [('y',17,18)]); (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #5: fun f ( x := f x y  
   error:                               ^ completed with _
@@ -53,7 +58,7 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [('_',20,20)])]))]))]
                 ))
              ))]
          ))])
@@ -62,55 +67,70 @@ Fuzz 10
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   error:           ^ completed with _
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [_]); (Ast.Func.Err [;]); (Ast.Func.Err [un]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [(]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [:=]); (Ast.Func.Err [f]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [y]); (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('_',0,0)]); (Ast.Func.Err [(';',0,1)]);
+       (Ast.Func.Err [('un',1,3)]); (Ast.Func.Err [('f',4,5)]);
+       (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #7: fun   ( x := f x y )
-  error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
+  error:           ^^^^  ^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('fun',0,3); ('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #8: ;un f ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   error:           ^ completed with _
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [_]); (Ast.Func.Err [;]); (Ast.Func.Err [un]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [(]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [:=]); (Ast.Func.Err [f]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [y]); (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('_',0,0)]); (Ast.Func.Err [(';',0,1)]);
+       (Ast.Func.Err [('un',1,3)]); (Ast.Func.Err [('f',4,5)]);
+       (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #9: f n f ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [f]); (Ast.Func.Err [n]); (Ast.Func.Err [f]);
-       (Ast.Func.Err [(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('f',0,1)]); (Ast.Func.Err [('n',2,3)]);
+       (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
+       (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
+       (Ast.Func.Err [('f',13,14)]); (Ast.Func.Err [('x',15,16)]);
+       (Ast.Func.Err [('y',17,18)]); (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #10: fun f ( x  = f x y )
-  error:                    ^^^^^^^^^^^  recovered syntax error
-  ast: (Ast.Prog.P [(Ast.Func.Fun ("f", [(Ast.Cmd.Err [ident;=;f;x;y])]))])
+  error:                    ^^ ^^^^^^^^  recovered syntax error
+  ast: (Ast.Prog.P
+     [(Ast.Func.Fun ("f",
+         [(Ast.Cmd.Err
+             [((Ast.Cmd.Err
+                  [((Ast.Cmd.Err
+                       [((Ast.Cmd.Err [('ident',8,9); ('=',11,12)]),8,12);
+                         ('f',13,14)]),8,14); ('x',15,16)]),8,16); ('y',17,18)])]
+         ))])
   
   fuzzed input #11: fun f ( x := f x $ )
   error:                             ^^  recovered syntax error
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x",
-             (Ast.Expr.Call ("f", [(Ast.Expr.Call ("x", [(Ast.Expr.Err [$])]))]
-                ))
+             (Ast.Expr.Call ("f",
+                [(Ast.Expr.Call ("x", [(Ast.Expr.Err [('$',17,18)])]))]))
              ))]
          ))])
   
   fuzzed input #12: fun f$( x := f x y )
   error:            ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [fun;ident;$]); (Ast.Func.Err [(]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [:=]); (Ast.Func.Err [f]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [y]); (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('fun',0,3); ('ident',4,5); ('$',5,6)]);
+       (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
+       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('f',13,14)]);
+       (Ast.Func.Err [('x',15,16)]); (Ast.Func.Err [('y',17,18)]);
+       (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #13: fun f ( x;:= f x y )
   error:                     ^^^^^^^^^^  recovered syntax error
@@ -118,7 +138,12 @@ Fuzz 10
   error:                     ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))); (Ast.Cmd.Err [:=;f;x;y])]
+         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',9,9)])));
+           (Ast.Cmd.Err
+              [((Ast.Cmd.Err
+                   [((Ast.Cmd.Err
+                        [((Ast.Cmd.Err [(':=',10,12)]),10,12); ('f',13,14)]),10,14);
+                     ('x',15,16)]),10,16); ('y',17,18)])]
          ))])
   note: not a subterm
   
@@ -130,7 +155,7 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [('_',18,18)])]))]))]
                 ))
              ))]
          ))])
@@ -142,8 +167,9 @@ Fuzz 10
   error:                               ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", (Ast.Expr.Call ("f", [(Ast.Expr.Err [_])]))));
-           (Ast.Cmd.Assign ("y", (Ast.Expr.Err [_])))]
+         [(Ast.Cmd.Assign ("x",
+             (Ast.Expr.Call ("f", [(Ast.Expr.Err [('_',15,15)])]))));
+           (Ast.Cmd.Assign ("y", (Ast.Expr.Err [('_',19,19)])))]
          ))])
   note: not a subterm
   
@@ -152,32 +178,44 @@ Fuzz 10
   error:                        ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_])));
-           (Ast.Cmd.Err [ident;x;y])]
+         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',12,12)])));
+           (Ast.Cmd.Err
+              [((Ast.Cmd.Err [('ident',13,14); ('x',15,16)]),13,16);
+                ('y',17,18)])]
          ))])
   note: not a subterm
   
   fuzzed input #17: f n f ( x := f x y )
   error:            ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [f]); (Ast.Func.Err [n]); (Ast.Func.Err [f]);
-       (Ast.Func.Err [(]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
-       (Ast.Func.Err [f]); (Ast.Func.Err [x]); (Ast.Func.Err [y]);
-       (Ast.Func.Err [)])])
+     [(Ast.Func.Err [('f',0,1)]); (Ast.Func.Err [('n',2,3)]);
+       (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
+       (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
+       (Ast.Func.Err [('f',13,14)]); (Ast.Func.Err [('x',15,16)]);
+       (Ast.Func.Err [('y',17,18)]); (Ast.Func.Err [(')',19,20)])])
   
   fuzzed input #18: fun f ; x := f x y )
   error:                  ^^^^^^^^^^^^^^ recovered syntax error
   error:                  ^ completed with (
   error:                  ^ completed with )
   ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("f", [])); (Ast.Func.Err [;]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [:=]); (Ast.Func.Err [f]); (Ast.Func.Err [x]);
-       (Ast.Func.Err [y]); (Ast.Func.Err [)])])
+     [(Ast.Func.Fun ("f", [])); (Ast.Func.Err [(';',6,7)]);
+       (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
+       (Ast.Func.Err [('f',13,14)]); (Ast.Func.Err [('x',15,16)]);
+       (Ast.Func.Err [('y',17,18)]); (Ast.Func.Err [(')',19,20)])])
   note: not a subterm
   
   fuzzed input #19: fun f ( $ := f x y )
   error:                    ^^^^^^^^^^^  recovered syntax error
-  ast: (Ast.Prog.P [(Ast.Func.Fun ("f", [(Ast.Cmd.Err [$;:=;f;x;y])]))])
+  ast: (Ast.Prog.P
+     [(Ast.Func.Fun ("f",
+         [(Ast.Cmd.Err
+             [((Ast.Cmd.Err
+                  [((Ast.Cmd.Err
+                       [((Ast.Cmd.Err
+                            [((Ast.Cmd.Err [('$',8,9)]),8,9); (':=',10,12)]),8,12);
+                         ('f',13,14)]),8,14); ('x',15,16)]),8,16); ('y',17,18)])]
+         ))])
   
   fuzzed input #20: fun f ( x;:= f x y )
   error:                     ^^^^^^^^^^  recovered syntax error
@@ -185,7 +223,12 @@ Fuzz 10
   error:                     ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))); (Ast.Cmd.Err [:=;f;x;y])]
+         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',9,9)])));
+           (Ast.Cmd.Err
+              [((Ast.Cmd.Err
+                   [((Ast.Cmd.Err
+                        [((Ast.Cmd.Err [(':=',10,12)]),10,12); ('f',13,14)]),10,14);
+                     ('x',15,16)]),10,16); ('y',17,18)])]
          ))])
   note: not a subterm
   

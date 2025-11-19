@@ -11,76 +11,112 @@ Coverage
   SHIFT [fun; x; (]
   READ (Parser.IDENT "x")
   SHIFT [fun; x; (; x]
-  READ (Parser.ERROR_TOKEN [:])
+  READ (Parser.ERROR_TOKEN [(':',10,11)])
   * ERROR: stack [fun; x; (; x]
-    LOOKAHEAD: (Parser.ERROR_TOKEN [:]) (invalid token)
-    RECOVERY: push (squashed) (Parser.ERROR_TOKEN [ident;:]) on [fun; x; (]
+    LOOKAHEAD: (Parser.ERROR_TOKEN [(':',10,11)]) (invalid token)
+    RECOVERY: push (squashed) (Parser.ERROR_TOKEN [('ident',8,9); (':',10,11)]) on [fun; x; (]
   SHIFT [fun; x; (; perr]
   READ Parser.SEMICOLON
   RED 1 [fun; x; (; perr]
-  SHIFT [fun; x; (; (Ast.Cmd.Err [ident;:]); ;]
+  SHIFT [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;]
   READ Parser.ELSE
-  * ERROR: stack [fun; x; (; (Ast.Cmd.Err [ident;:]); ;]
+  * ERROR: stack [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: 
     RECOVERY: generate hole and push (generation_streak = 0)
-  SHIFT [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; perr]
+  SHIFT [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;; perr]
   READ Parser.ELSE
-  RED 1 [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; perr]
-  * ERROR: stack [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; (Ast.Cmd.Err [_])]
+  RED 1 [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;; perr]
+  * ERROR: stack [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;; (Ast.Cmd.Err [('_',13,13)])]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: [<list cmd> := <cmd>]
       PROPOSE: tokens: 
     RECOVERY: reduce [<list cmd> := <cmd>]
   READ Parser.ELSE
-  RED 3 [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; [(Ast.Cmd.Err [_])]]
-  * ERROR: stack [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]]
+  RED 3 [fun; x; (; (Ast.Cmd.Err [('ident',8,9); (':',10,11)]); ;; [(Ast.Cmd.Err [('_',13,13)])]]
+  * ERROR: stack [fun; x; (; [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: )
     RECOVERY: generate ) and push (generation_streak = 1)
-  SHIFT [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]; )]
+  SHIFT [fun; x; (; [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]; )]
   READ Parser.ELSE
-  RED 5 [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]; )]
-  * ERROR: stack [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]))]
+  RED 5 [fun; x; (; [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]; )]
+  * ERROR: stack [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     ))]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: 
-    RECOVERY: turn Parser.ELSE into (Parser.ERROR_TOKEN [else]) and push
-  SHIFT [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); perr]
+    RECOVERY: turn Parser.ELSE into (Parser.ERROR_TOKEN [('else',13,17)]) and push
+  SHIFT [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); perr]
   READ (Parser.IDENT "x")
-  RED 1 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); perr]
-  * ERROR: stack [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else])]
+  RED 1 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); perr]
+  * ERROR: stack [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)])]
     LOOKAHEAD: (Parser.IDENT "x") (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: 
-    RECOVERY: turn (Parser.IDENT "x") into (Parser.ERROR_TOKEN [x]) and push
-  SHIFT [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); perr]
+    RECOVERY: turn (Parser.IDENT "x") into (Parser.ERROR_TOKEN [('x',18,19)]) and push
+  SHIFT [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); perr]
   READ Parser.RPAREN
-  RED 1 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); perr]
-  * ERROR: stack [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x])]
+  RED 1 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); perr]
+  * ERROR: stack [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)])]
     LOOKAHEAD: Parser.RPAREN (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: 
-    RECOVERY: turn Parser.RPAREN into (Parser.ERROR_TOKEN [)]) and push
-  SHIFT [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); perr]
+    RECOVERY: turn Parser.RPAREN into (Parser.ERROR_TOKEN [(')',20,21)]) and push
+  SHIFT [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]); perr]
   READ Parser.EOF
-  RED 1 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); perr]
-  RED 0 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)]); []]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); [(Ast.Func.Err [)])]]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); [(Ast.Func.Err [x]); (Ast.Func.Err [)])]]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); [(Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]]
-  SHIFT [[(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]));
-    (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]; eof]
-  RED 2 [[(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]));
-    (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]; eof]
+  RED 1 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]); perr]
+  RED 0 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(')',20,21)])]
+  RED 2 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(')',20,21)]); []]
+  RED 2 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]); [(Ast.Func.Err [(')',20,21)])]]
+  RED 2 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); (Ast.Func.Err [('else',13,17)]); [(Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(')',20,21)])]]
+  RED 2 [(Ast.Func.Fun ("x",
+     [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+     )); [(Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
+    (Ast.Func.Err [(')',20,21)])]]
+  SHIFT [[(Ast.Func.Fun ("x",
+      [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+      )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
+    (Ast.Func.Err [(')',20,21)])]; eof]
+  RED 2 [[(Ast.Func.Fun ("x",
+      [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]); (Ast.Cmd.Err [('_',13,13)])]
+      )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
+    (Ast.Func.Err [(')',20,21)])]; eof]
   ACCEPT
   error:         ^^^^ ^^^^^^^^^ recovered syntax error
   error:              ^ completed with _
   error:              ^ completed with )
   ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]));
-       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])])
+     [(Ast.Func.Fun ("x",
+         [(Ast.Cmd.Err [('ident',8,9); (':',10,11)]);
+           (Ast.Cmd.Err [('_',13,13)])]
+         )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
+       (Ast.Func.Err [(')',20,21)])])
   
