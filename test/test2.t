@@ -10,13 +10,10 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))
-                  ]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
                 ))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #1: fun   ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
@@ -56,13 +53,10 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))
-                  ]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
                 ))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #6: ;un f ( x := f x y )
   error:           ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
@@ -108,10 +102,8 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f", [(Ast.Expr.Call ("x", [(Ast.Expr.Err [$])]))]
                 ))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #12: fun f$( x := f x y )
   error:            ^^^^^^^^^^^^^^^^^^^^ recovered syntax error
@@ -127,8 +119,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))); (Ast.Cmd.Err [:=;f;x;y])]
-         ))
-       ])
+         ))])
   note: not a subterm
   
   fuzzed input #14: fun f ( x := f x y;)
@@ -139,13 +130,10 @@ Fuzz 10
          [(Ast.Cmd.Assign ("x",
              (Ast.Expr.Call ("f",
                 [(Ast.Expr.Call ("x",
-                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))
-                  ]
+                    [(Ast.Expr.Call ("y", [(Ast.Expr.Err [_])]))]))]
                 ))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #15: fun f ( x := f ; y )
   error:                           ^   ^ recovered syntax error
@@ -156,8 +144,7 @@ Fuzz 10
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Call ("f", [(Ast.Expr.Err [_])]))));
            (Ast.Cmd.Assign ("y", (Ast.Expr.Err [_])))]
-         ))
-       ])
+         ))])
   note: not a subterm
   
   fuzzed input #16: fun f ( x :=;f x y )
@@ -165,10 +152,9 @@ Fuzz 10
   error:                        ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))); (Ast.Cmd.Err [ident;x;y])
-           ]
-         ))
-       ])
+         [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_])));
+           (Ast.Cmd.Err [ident;x;y])]
+         ))])
   note: not a subterm
   
   fuzzed input #17: f n f ( x := f x y )
@@ -200,7 +186,6 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))); (Ast.Cmd.Err [:=;f;x;y])]
-         ))
-       ])
+         ))])
   note: not a subterm
   

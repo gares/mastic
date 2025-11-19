@@ -1,6 +1,6 @@
-%{ open Ast 
-
-
+%{ 
+    open Mastic
+    open Ast 
 %}
 
 %token <int> INT
@@ -32,9 +32,9 @@ func:
 /* boilerplate */ | e = ERROR_TOKEN;  { Func.of_token e }
 
 list_func:
-| { List.Nil }
-| f = func; l = list_func { List.Cons(f, l) }
-/* boilerplate */ | e = ERROR_TOKEN; { Func.of_tokenL e }
+| { ErrorList.Nil }
+| f = func; l = list_func { ErrorList.Cons(f, l) }
+/* boilerplate */ | e = ERROR_TOKEN; { Func.List.of_token e }
 
 cmd:
 | IF; e = expr; THEN; t = cmd { Cmd.If(e,t,None)}
@@ -43,10 +43,10 @@ cmd:
 /* boilerplate */ | e = ERROR_TOKEN;  { Cmd.of_token e }
 
 list_cmd:
-| { List.Nil }
-| c = cmd {  List.Cons (c, List.Nil) }
-| c = cmd; SEMICOLON; l = list_cmd { List.Cons (c, l) }
-/* boilerplate */ | e = ERROR_TOKEN { Cmd.of_tokenL e }
+| { ErrorList.Nil }
+| c = cmd {  ErrorList.Cons (c, ErrorList.Nil) }
+| c = cmd; SEMICOLON; l = list_cmd { ErrorList.Cons (c, l) }
+/* boilerplate */ | e = ERROR_TOKEN { Cmd.List.of_token e }
 
 expr:
 | i = INT { Expr.Lit i }
@@ -57,6 +57,6 @@ expr:
 /* boilerplate */ | e = ERROR_TOKEN;  { Expr.of_token e }
 
 ne_list_expr:
-| e = expr; { [e] }
-| e = expr; l = ne_list_expr { e :: l }
-/* boilerplate */ | e = ERROR_TOKEN { [Expr.of_token e] }
+| e = expr; { ErrorList.Cons(e, ErrorList.Nil) }
+| e = expr; l = ne_list_expr { ErrorList.Cons(e, l) }
+/* boilerplate */ | e = ERROR_TOKEN { Expr.List.of_token e }

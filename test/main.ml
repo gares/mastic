@@ -54,11 +54,11 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
   | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
   | I.N I.N_ne_list_expr ->
-      x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> String.concat " " @@ List.map Ast.Expr.show x)
+      x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> Ast.Expr.List.show x)
   | I.N I.N_list_func ->
-      x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.List.show Ast.Func.pp x)
+      x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.Func.List.show x)
   | I.N I.N_list_cmd ->
-      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.List.show Ast.Cmd.pp x)
+      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Cmd.List.show x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -150,12 +150,12 @@ module Recovery = struct
    fun x tx b e ->
     match tx with
     | I.N I.N_main -> assert false
-    | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.Err x) b e)
-    | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err x) b e)
-    | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.Err x) b e)
-    | I.N I.N_list_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Prog.Err (P x)) b e)
-    | I.N I.N_ne_list_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.Err (Call("xxx",x))) b e)
-    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.mkErrL x) b e)
+    | I.N I.N_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.build_token x) b e)
+    | I.N I.N_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.build_token x) b e)
+    | I.N I.N_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.build_token x) b e)
+    | I.N I.N_list_func -> ERROR_TOKEN (Mastic.Error.loc (Ast.Func.List.build_token x) b e)
+    | I.N I.N_ne_list_expr -> ERROR_TOKEN (Mastic.Error.loc (Ast.Expr.List.build_token x) b e)
+    | I.N I.N_list_cmd -> ERROR_TOKEN (Mastic.Error.loc (Ast.Cmd.List.build_token x) b e)
     | I.T y -> ERROR_TOKEN (Mastic.ErrorToken.mkLexError (show_terminal y) b e)
 
   let is_error : type a. a -> a I.symbol -> bool =
@@ -181,22 +181,16 @@ module ERParser = Mastic.ErrorResilientParser.Make (I) (IncrementalParser) (Reco
 
 let included_opt f x y = match (x, y) with None, None -> true | Some x, Some y -> f x y | _ -> false
 
-let rec included_list f e l1 l2 =
-  match (l1, l2) with
-  | [], [] -> true
-  | x :: xs, y :: ys -> (f x y && included_list f e xs ys) || (e x && included_list f e xs l2)
-  | _ -> false
-
 let rec included_prog : Ast.Prog.t -> Ast.Prog.t -> bool =
  fun x y ->
   let open Ast.Prog in
-  match (x, y) with Err _, _ -> true | P x, P y -> true (*included_list included_fun Ast.Func.is_err x y*) | _ -> false
+  match (x, y) with Err _, _ -> true | P x, P y -> Mastic.ErrorList.included included_fun Ast.Func.is_err x y | _ -> false
 
 and included_fun : Ast.Func.t -> Ast.Func.t -> bool = fun x y ->
   let open Ast.Func in
   match (x, y) with
   | Err _, _ -> true
-  | Fun (n1, l1), Fun (n2, l2) -> n1 = n2 && true (*included_list included_cmd Ast.Cmd.is_err l1 l2*)
+  | Fun (n1, l1), Fun (n2, l2) -> n1 = n2 && Mastic.ErrorList.included included_cmd Ast.Cmd.is_err l1 l2
   | _ -> false
 
 and included_cmd (x : Ast.Cmd.t) y =
@@ -214,13 +208,13 @@ and included_expr x y =
   | Lit n, Lit m -> n = m
   | Mul (x1, y1), Mul (x2, y2) -> included_expr x1 y1 && included_expr x2 y2
   | Add (x1, y1), Add (x2, y2) -> included_expr x1 y1 && included_expr x2 y2
-  | Call (f, xs), Call (g, ys) -> f = g && included_list included_expr is_err xs ys
+  | Call (f, xs), Call (g, ys) -> f = g && Mastic.ErrorList.included included_expr is_err xs ys
   | _ -> false
 
 let underline l (b, e) = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
-
-let rec on_prog f = function Ast.Prog.P l -> List.iter (on_func f) (*l*) [] | Err e -> f (Mastic.Error.span e)
-and on_func f = function Ast.Func.Fun (_, l) -> List.iter (on_cmd f) (*l*) [] | Err e -> f (Mastic.Error.span e)
+let onloc f x = f (Mastic.Error.bloc x,Mastic.Error.eloc x)
+let rec on_prog f = function Ast.Prog.P l -> Ast.Func.List.iter (on_func f) (onloc f) l | Err e -> f (Mastic.Error.span e)
+and on_func f = function Ast.Func.Fun (_, l) -> Ast.Cmd.List.iter (on_cmd f) (onloc f) l | Err e -> f (Mastic.Error.span e)
 
 and on_cmd f = function
   | Ast.Cmd.Assign (_, v) -> on_expr f v
@@ -240,7 +234,7 @@ and on_expr f = function
   | Ast.Expr.Mul (e1, e2) ->
       on_expr f e1;
       on_expr f e2
-  | Ast.Expr.Call (_, l) -> List.iter (on_expr f) l
+  | Ast.Expr.Call (_, l) -> Ast.Expr.List.iter (on_expr f) (onloc f) l
   | Ast.Expr.Lit _ -> ()
   | Err e -> f (Mastic.Error.span e)
 

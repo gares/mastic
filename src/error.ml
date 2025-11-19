@@ -14,6 +14,7 @@ let bloc (_, b, _) = b
 let eloc (_, _, e) = e
 let view x = x
 let map f (x, b, e) = (f x, b, e)
+let iter f g l = List.iter (fun (x,b,e) -> match x with Lex s -> g (s,b,e) | Ast s -> f (s,b,e)) l
 let min_pos p1 p2 = if p1.pos_cnum < p2.pos_cnum then p1 else p2
 let max_pos p1 p2 = if p1.pos_cnum > p2.pos_cnum then p1 else p2
 

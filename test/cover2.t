@@ -13,9 +13,9 @@ Coverage
   READ Parser.EOF
   RED 1 [perr]
   RED 0 [(Ast.Func.Err [fun;$])]
-  RED 2 [(Ast.Func.Err [fun;$]); ]
-  SHIFT [(Ast.Func.Err [fun;$]); eof]
-  RED 2 [(Ast.Func.Err [fun;$]); eof]
+  RED 2 [(Ast.Func.Err [fun;$]); []]
+  SHIFT [[(Ast.Func.Err [fun;$])]; eof]
+  RED 2 [[(Ast.Func.Err [fun;$])]; eof]
   ACCEPT
   error: ^^^^^ recovered syntax error
   ast: (Ast.Prog.P [(Ast.Func.Err [fun;$])])

@@ -34,15 +34,15 @@ Coverage
       PROPOSE: tokens: 
     RECOVERY: reduce [<list cmd> := <cmd>]
   READ Parser.ELSE
-  RED 3 [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; (Ast.Cmd.Err [_])]
-  * ERROR: stack [fun; x; (; (Ast.Cmd.Err [ident;:]) (Ast.Cmd.Err [_])]
+  RED 3 [fun; x; (; (Ast.Cmd.Err [ident;:]); ;; [(Ast.Cmd.Err [_])]]
+  * ERROR: stack [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: 
       PROPOSE: tokens: )
     RECOVERY: generate ) and push (generation_streak = 1)
-  SHIFT [fun; x; (; (Ast.Cmd.Err [ident;:]) (Ast.Cmd.Err [_]); )]
+  SHIFT [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]; )]
   READ Parser.ELSE
-  RED 5 [fun; x; (; (Ast.Cmd.Err [ident;:]) (Ast.Cmd.Err [_]); )]
+  RED 5 [fun; x; (; [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]; )]
   * ERROR: stack [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]))]
     LOOKAHEAD: Parser.ELSE (out of place token)
       PROPOSE: reductions: 
@@ -68,12 +68,14 @@ Coverage
   READ Parser.EOF
   RED 1 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); perr]
   RED 0 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)]); ]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]) (Ast.Func.Err [)])]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]) (Ast.Func.Err [x]) (Ast.Func.Err [)])]
-  SHIFT [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])) (Ast.Func.Err [else]) (Ast.Func.Err [x]) (Ast.Func.Err [)]); eof]
-  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])) (Ast.Func.Err [else]) (Ast.Func.Err [x]) (Ast.Func.Err [)]); eof]
+  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)]); []]
+  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); (Ast.Func.Err [x]); [(Ast.Func.Err [)])]]
+  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); (Ast.Func.Err [else]); [(Ast.Func.Err [x]); (Ast.Func.Err [)])]]
+  RED 2 [(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])])); [(Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]]
+  SHIFT [[(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]));
+    (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]; eof]
+  RED 2 [[(Ast.Func.Fun ("x", [(Ast.Cmd.Err [ident;:]); (Ast.Cmd.Err [_])]));
+    (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [)])]; eof]
   ACCEPT
   error:         ^^^^ ^^^^^^^^^ recovered syntax error
   error:              ^ completed with _

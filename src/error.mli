@@ -16,3 +16,4 @@ val span : 'a t -> Lexing.position * Lexing.position
 val merge : 'a t -> 'a t -> 'a t
 val show : ('a -> string) -> 'a t -> string
 val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+val iter : ('a located -> unit) -> (string located -> unit) -> 'a t -> unit

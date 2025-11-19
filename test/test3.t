@@ -9,10 +9,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
-             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
-           ]
-         ))
-       ])
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
+         ))])
   
   fuzzed input #1: fun f ( if 1 then x :;  else x := 1 )
   error:                             ^^^^  ^^^^^^^^^^^^^ recovered syntax error
@@ -22,8 +20,7 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [ident;:]), None));
            (Ast.Cmd.Err [_])]
-         ));
-       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
+         )); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
   
@@ -34,10 +31,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
-             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
-           ]
-         ))
-       ])
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
+         ))])
   
   fuzzed input #3: fun f ( if 1 then x := $else x := 1 )
   error:                                  ^^             recovered syntax error
@@ -45,10 +40,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [$]))),
-             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
-           ]
-         ))
-       ])
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
+         ))])
   
   fuzzed input #4: fun f ( if 1 then x :=  e se x := 1 )
   error:                                          ^^^    recovered syntax error
@@ -59,16 +52,12 @@ Fuxx
                 (Ast.Expr.Call ("e",
                    [(Ast.Expr.Call ("se",
                        [(Ast.Expr.Call ("x",
-                           [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))
-                         ]
-                       ))
-                     ]
+                           [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))]
+                       ))]
                    ))
                 )),
-             None))
-           ]
-         ))
-       ])
+             None))]
+         ))])
   note: not a subterm
   
   fuzzed input #5: fun f ( if 1 then x :=  el$e x := 1 )
@@ -81,16 +70,12 @@ Fuxx
                    [(Ast.Expr.Err [$]);
                      (Ast.Expr.Call ("e",
                         [(Ast.Expr.Call ("x",
-                            [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))
-                          ]
-                        ))
-                     ]
+                            [(Ast.Expr.Err [:=]); (Ast.Expr.Lit 1)]))]
+                        ))]
                    ))
                 )),
-             None))
-           ]
-         ))
-       ])
+             None))]
+         ))])
   note: not a subterm
   
   fuzzed input #6: fun f ( if 1  hen x :=  else x := 1 )
@@ -101,10 +86,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Err [(Ast.Expr.Lit 1);hen;x;:=]),
              (Ast.Cmd.Err [_]), (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #7: fun f ( if 1 the  x :=  else x := 1 )
   error:                      ^^^^^^^^^^^^ ^             recovered syntax error
@@ -114,10 +97,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Err [(Ast.Expr.Lit 1);the;x;:=]),
              (Ast.Cmd.Err [_]), (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))
-             ))
-           ]
-         ))
-       ])
+             ))]
+         ))])
   
   fuzzed input #8: fun f ( if 1 then ; :=  else x := 1 )
   error:                             ^ ^^^ ^^^^^^^^^^^^^ recovered syntax error
@@ -127,8 +108,7 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [_]), None));
            (Ast.Cmd.Err [:=])]
-         ));
-       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
+         )); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
   
@@ -165,8 +145,7 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [ident;:]), None));
            (Ast.Cmd.Err [_])]
-         ));
-       (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
+         )); (Ast.Func.Err [else]); (Ast.Func.Err [x]); (Ast.Func.Err [:=]);
        (Ast.Func.Err [1]); (Ast.Func.Err [)])])
   note: not a subterm
   
@@ -177,10 +156,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
-             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
-           ]
-         ))
-       ])
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
+         ))])
   
   fuzzed input #14: fun f ( if 1 then x :=  else x;:= 1 )
   error:                                    ^     ^^^^^^  recovered syntax error
@@ -193,8 +170,7 @@ Fuxx
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
              (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))))));
            (Ast.Cmd.Err [:=;1])]
-         ))
-       ])
+         ))])
   note: not a subterm
   
   fuzzed input #15: fun f ( if $ then x :=  else x := 1 )
@@ -204,10 +180,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Err [$]),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
-             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))
-           ]
-         ))
-       ])
+             (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
+         ))])
   
   fuzzed input #16: fun f ( if 1 then x :=  ;lse x := 1 )
   error:                                    ^^^^^^^^^^^^  recovered syntax error
@@ -217,8 +191,7 @@ Fuxx
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))), None));
            (Ast.Cmd.Err [ident;x;:=;1])]
-         ))
-       ])
+         ))])
   note: not a subterm
   
   fuzzed input #17: fun f ; if 1 then x :=  else x := 1 )
@@ -247,10 +220,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Err
              [(Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Assign ("x", (Ast.Expr.Err [_]))),
-     (Some (Ast.Cmd.Err [ident;=]))));1])
-           ]
-         ))
-       ])
+     (Some (Ast.Cmd.Err [ident;=]))));1])]
+         ))])
   
   fuzzed input #20: fun f$( if 1 then x :=  else x := 1 )
   error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
