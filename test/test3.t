@@ -91,9 +91,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If (
              (Ast.Expr.Err
-                [((Ast.Expr.Err
-                     [((Ast.Expr.Err [((Ast.Expr.Lit 1),11,12); ('hen',14,17)]),11,17);
-                       ('x',18,19)]),11,19); (':=',20,22)]),
+                [((Ast.Expr.Lit 1),11,12); ('hen',14,17); ('x',18,19);
+                  (':=',20,22)]),
              (Ast.Cmd.Err [('_',24,24)]),
              (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
          ))])
@@ -107,9 +106,8 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If (
              (Ast.Expr.Err
-                [((Ast.Expr.Err
-                     [((Ast.Expr.Err [((Ast.Expr.Lit 1),11,12); ('the',13,16)]),11,16);
-                       ('x',18,19)]),11,19); (':=',20,22)]),
+                [((Ast.Expr.Lit 1),11,12); ('the',13,16); ('x',18,19);
+                  (':=',20,22)]),
              (Ast.Cmd.Err [('_',24,24)]),
              (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1))))))]
          ))])
@@ -199,7 +197,7 @@ Fuxx
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))),
              (Some (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',30,30)]))))));
-           (Ast.Cmd.Err [((Ast.Cmd.Err [(':=',31,33)]),31,33); ('1',34,35)])]
+           (Ast.Cmd.Err [(':=',31,33); ('1',34,35)])]
          ))])
   note: not a subterm
   
@@ -222,10 +220,7 @@ Fuxx
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))), None));
-           (Ast.Cmd.Err
-              [((Ast.Cmd.Err
-                   [((Ast.Cmd.Err [('lse',25,28); ('x',29,30)]),25,30);
-                     (':=',31,33)]),25,33); ('1',34,35)])]
+           (Ast.Cmd.Err [('lse',25,28); ('x',29,30); (':=',31,33); ('1',34,35)])]
          ))])
   note: not a subterm
   

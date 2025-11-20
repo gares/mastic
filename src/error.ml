@@ -36,7 +36,11 @@ let register name r : 'a registered =
   Registered
     {
       is_err = (fun x -> match r.match_ast x with Some _ -> true | None -> false);
-      of_token = (fun x -> r.build_ast x);
+      of_token = (fun x ->
+        let condition (e,_,_) = Option.bind (r.match_error e) r.match_ast in
+        let same = List.concat @@ List.filter_map condition x in
+        let other = List.filter (fun x -> condition x = None) x in
+        r.build_ast (same @ other));
       build_token = (fun x -> [ map r.build_error x ]);
     }
 

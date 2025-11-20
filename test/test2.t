@@ -115,10 +115,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Err
-             [((Ast.Cmd.Err
-                  [((Ast.Cmd.Err
-                       [((Ast.Cmd.Err [('x',8,9); ('=',11,12)]),8,12);
-                         ('f',13,14)]),8,14); ('x',15,16)]),8,16); ('y',17,18)])]
+             [('x',8,9); ('=',11,12); ('f',13,14); ('x',15,16); ('y',17,18)])]
          ))])
   
   fuzzed input #11: fun f ( x := f x $ )
@@ -150,11 +147,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',9,9)])));
-           (Ast.Cmd.Err
-              [((Ast.Cmd.Err
-                   [((Ast.Cmd.Err
-                        [((Ast.Cmd.Err [(':=',10,12)]),10,12); ('f',13,14)]),10,14);
-                     ('x',15,16)]),10,16); ('y',17,18)])]
+           (Ast.Cmd.Err [(':=',10,12); ('f',13,14); ('x',15,16); ('y',17,18)])]
          ))])
   note: not a subterm
   
@@ -189,8 +182,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',12,12)])));
-           (Ast.Cmd.Err
-              [((Ast.Cmd.Err [('f',13,14); ('x',15,16)]),13,16); ('y',17,18)])]
+           (Ast.Cmd.Err [('f',13,14); ('x',15,16); ('y',17,18)])]
          ))])
   note: not a subterm
   
@@ -222,11 +214,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Err
-             [((Ast.Cmd.Err
-                  [((Ast.Cmd.Err
-                       [((Ast.Cmd.Err
-                            [((Ast.Cmd.Err [('$',8,9)]),8,9); (':=',10,12)]),8,12);
-                         ('f',13,14)]),8,14); ('x',15,16)]),8,16); ('y',17,18)])]
+             [('$',8,9); (':=',10,12); ('f',13,14); ('x',15,16); ('y',17,18)])]
          ))])
   
   fuzzed input #20: fun f ( x;:= f x y )
@@ -237,11 +225,7 @@ Fuzz 10
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',9,9)])));
-           (Ast.Cmd.Err
-              [((Ast.Cmd.Err
-                   [((Ast.Cmd.Err
-                        [((Ast.Cmd.Err [(':=',10,12)]),10,12); ('f',13,14)]),10,14);
-                     ('x',15,16)]),10,16); ('y',17,18)])]
+           (Ast.Cmd.Err [(':=',10,12); ('f',13,14); ('x',15,16); ('y',17,18)])]
          ))])
   note: not a subterm
   

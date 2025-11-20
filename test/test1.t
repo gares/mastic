@@ -16,9 +16,7 @@ Fuzz 10
   error:                   ^  ^ ^            recovered syntax error
   error:                   x  = 1            lex errors
   ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Err
-             [((Ast.Cmd.Err [('x',8,9); ('=',11,12)]),8,12); ('1',13,14)])]
+     [(Ast.Func.Fun ("f", [(Ast.Cmd.Err [('x',8,9); ('=',11,12); ('1',13,14)])]
          )); (Ast.Func.Fun ("g", []))])
   
   fuzzed input #3: fun f ( x := 1) fun g ( )
@@ -103,9 +101,7 @@ Fuzz 10
   error:                    ^  ^ ^            recovered syntax error
   error:                    x  = 1            lex errors
   ast: (Ast.Prog.P
-     [(Ast.Func.Fun ("f",
-         [(Ast.Cmd.Err
-             [((Ast.Cmd.Err [('x',8,9); ('=',11,12)]),8,12); ('1',13,14)])]
+     [(Ast.Func.Fun ("f", [(Ast.Cmd.Err [('x',8,9); ('=',11,12); ('1',13,14)])]
          )); (Ast.Func.Fun ("g", []))])
   
   fuzzed input #13: fun f ( x := 1) fun g ( ;
