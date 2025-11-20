@@ -31,4 +31,3 @@ val span : t -> Lexing.position * Lexing.position
 val merge : t -> t -> t
 val show : t -> string
 val pp : Format.formatter -> t -> unit
-(* val iter : t -> unit *)
