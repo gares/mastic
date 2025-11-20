@@ -6,7 +6,7 @@ let dbg f =
     flush_all ())
   else ()
 
-let say = Printf.eprintf
+let say x = Format.fprintf Format.err_formatter x
 
 type 'token tok = { s : string; t : 'token; b : Lexing.position; e : Lexing.position }
 
@@ -114,22 +114,28 @@ struct
         (t, b, e)
 
   let is_error_token x = match match_error_token x with None -> false | _ -> true
-  let show_element elt = match elt with Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
 
-  let show_env env =
+  let pp_element fmt elt =
+    match elt with Element (st, x, _, _) -> Format.fprintf fmt "%s" @@ show_symbol (Some x) @@ incoming_symbol st
+
+  let pp_env fmt env =
     let rec to_list env =
       match top env with None -> [] | Some x -> x :: (match pop env with None -> [] | Some x -> to_list x)
     in
     let stack = List.rev @@ to_list env in
-    String.concat "; " (List.map show_element stack)
+    Format.fprintf fmt "@[<hov 2>[%a]@]"
+      (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") pp_element)
+      stack
 
-  let show_gens l = List.map (fun x -> x.s) l |> String.concat " "
-  let show_xsymbol = function X s -> show_symbol None s
+  let pp_gens fmt l = Format.fprintf fmt "%s" @@ (List.map (fun x -> x.s) l |> String.concat " ")
+  let pp_xsymbol fmt = function X s -> Format.fprintf fmt "%s" @@ show_symbol None s
 
-  let show_prod x =
-    Printf.sprintf "[%s := %s]" (show_xsymbol (lhs x)) (String.concat " " (List.map show_xsymbol (rhs x)))
+  let pp_prod fmt x =
+    Format.fprintf fmt "[%a := %a]" pp_xsymbol (lhs x)
+      (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
+      (rhs x)
 
-  let show_prods l = String.concat " " (List.map show_prod l)
+  let pp_prods fmt l = Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") pp_prod fmt l
 
   let merge_parse_error x y =
     match (match_error_token x, match_error_token y) with
@@ -178,15 +184,15 @@ struct
     | Rejected -> assert false
     (* standard part, we just log what happend for debugging. Shifting pops the tokens buffer *)
     | Accepted v ->
-        dbg (fun () -> say "ACCEPT\n");
+        dbg (fun () -> say "@[<hov 2>ACCEPT@]@\n");
         (st.errbuf, v)
     | Shifting (_, s, _) ->
-        dbg (fun () -> say "SHIFT [%s]\n" (show_env s));
+        dbg (fun () -> say "@[<hov 2>SHIFT %a@]@\n" pp_env s);
         let chkp = resume ckpt in
         loop { st with incoming_toks = tail st.incoming_toks } chkp
     | AboutToReduce (s, p) ->
         let n = List.length @@ rhs p in
-        dbg (fun () -> say "RED %d [%s]\n" n (show_env s));
+        dbg (fun () -> say "@[<hov 2>RED %d %a@]@\n" n pp_env s);
         let chkp = resume ckpt in
         loop st chkp
     (* reading: we save the token into a buffer when empty, and read from the buffer if not empty *)
@@ -207,36 +213,36 @@ struct
                 let last_tok = { s; t; b; e } in
                 (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak; ticks })
           in
-          dbg (fun () -> say "READ %s\n" (show_token @@ tok));
+          dbg (fun () -> say "@[<hov 2>READ %s@]@\n" (show_token @@ tok));
           let chkp = offer ckpt token in
           loop st chkp
     (* handling errors, two cases:
        1. the lookahead does not fit (fail to shift)
        2. the stack does not reduce *)
     | HandlingError env -> (
-        dbg (fun () -> say "* ERROR: stack [%s]\n" (show_env env));
+        dbg (fun () -> say "@[<hov 2>* ERROR: stack %a@]@\n" pp_env env);
         match st.incoming_toks with
         (* 1.1 shift failure, the token is invalid (not even a token, just a piece of text) *)
         | { s; t; b; e } :: incoming_toks when is_error_token t ->
-            dbg (fun () -> say "  LOOKAHEAD: %s (invalid token)\n" (show_token t));
+            dbg (fun () -> say "@[<hov 2>  LOOKAHEAD: %s (invalid token)@]@\n" (show_token t));
             (* b and e are likely wrong after merge *)
             begin
               match ensure_top_is_error_token env with
               | None -> failwith "the grammar start symbol must include an atom for parse error"
               | Some (t0, env) ->
                   let t = merge_parse_error t0 t in
-                  dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                  dbg (fun () -> say "@[<hov 2>  RECOVERY: push (squashed) %s on %a@]@\n" (show_token t) pp_env env);
                   let chkp = offer (input_needed env) (valid t) in
                   let incoming_toks = { s; t; b; e } :: incoming_toks in
                   loop { st with incoming_toks } chkp
             end
         (* 1.1 shift failure, the token does not fit *)
         | next_token :: incoming_toks ->
-            dbg (fun () -> say "  LOOKAHEAD: %s (out of place token)\n" (show_token next_token.t));
+            dbg (fun () -> say "@[<hov 2>  LOOKAHEAD: %s (out of place token)@]@\n" (show_token next_token.t));
             let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
             let productions = automaton_productions env in
-            dbg (fun () -> say "    PROPOSE: reductions: %s\n" (show_prods reducible_productions));
-            dbg (fun () -> say "    PROPOSE: tokens: %s\n" (show_gens acceptable_tokens));
+            dbg (fun () -> say "@[<hov 2>    PROPOSE: reductions: %a@]@\n" pp_prods reducible_productions);
+            dbg (fun () -> say "@[<hov 2>    PROPOSE: tokens: %a@]@\n" pp_gens acceptable_tokens);
             begin
               match
                 (* TODO: do not receive incoming_tokens, the action forces them *)
@@ -251,7 +257,8 @@ struct
                       let t = merge_parse_error x y in
                       (* TODO: fix locs *)
                       let ((_, b, e) as valid) = valid t in
-                      dbg (fun () -> say "  RECOVERY: squash %s and %s and push\n" (show_token x) (show_token y));
+                      dbg (fun () ->
+                          say "@[<hov 2>  RECOVERY: squash %s and %s and push@]@\n" (show_token x) (show_token y));
 
                       let chkp = offer (input_needed env) valid in
                       let incoming_toks = { t; s = ""; b; e } :: incoming_toks in
@@ -266,7 +273,8 @@ struct
                   in
                   let incoming_toks = t :: incoming_toks in
                   dbg (fun () ->
-                      say "  RECOVERY: turn %s into %s and push\n" (show_token next_token.t) (show_token t.t));
+                      say "@[<hov 2>  RECOVERY: turn %s into %s and push@]@\n" (show_token next_token.t)
+                        (show_token t.t));
                   let chkp = offer (input_needed env) (tok_to_triple t) in
                   loop { st with incoming_toks } chkp
               | GenerateHole ->
@@ -281,7 +289,8 @@ struct
                   in
                   let incoming_toks = t :: next_token :: incoming_toks in
                   dbg (fun () ->
-                      say "  RECOVERY: generate hole and push (generation_streak = %d)\n" st.generation_streak);
+                      say "@[<hov 2>  RECOVERY: generate hole and push (generation_streak = %d)@]@\n"
+                        st.generation_streak);
                   let chkp = offer (input_needed env) (tok_to_triple t) in
                   let errbuf = (t.b, t.s) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in
@@ -289,30 +298,31 @@ struct
               | GenerateToken t ->
                   let incoming_toks = t :: next_token :: incoming_toks in
                   dbg (fun () ->
-                      say "  RECOVERY: generate %s and push (generation_streak = %d)\n" t.s st.generation_streak);
+                      say "@[<hov 2>  RECOVERY: generate %s and push (generation_streak = %d)@]@\n" t.s
+                        st.generation_streak);
                   let chkp = offer (input_needed env) (tok_to_triple t) in
                   let errbuf = (t.b, t.s) :: st.errbuf in
                   let generation_streak = st.generation_streak + 1 in
                   loop { st with incoming_toks; errbuf; generation_streak } chkp
               | Reduce p ->
                   let incoming_toks = next_token :: incoming_toks in
-                  dbg (fun () -> say "  RECOVERY: reduce %s\n" (show_prod p));
+                  dbg (fun () -> say "@[<hov 2>  RECOVERY: reduce %a@]@\n" pp_prod p);
                   let chkp = input_needed (force_reduction p env) in
                   loop { st with incoming_toks } chkp
             end
         (* 2. reduce failure, we fold the stack into an error *)
         | [] -> assert false)
-  (* dbg (fun () -> say "  STUCK\n");
+  (* dbg (fun () -> say "  @[<hov 2>STUCK\n@]@");
             match force_new_error_token env with
             | Empty -> assert false
             | TopIsErr (t, env) ->
                 (* 2.1 we turn the top of the stack into an error *)
-                dbg (fun () -> say "  RECOVERY: push %s on [%s]\n" (show_token t) (show_env env));
+                dbg (fun () -> say "  @[<hov 2>RECOVERY: push %s on [%s]\n@]@" (show_token t) (show_env env));
                 let chkp = offer (input_needed env) (valid t) in
                 loop st chkp
             | Top2AreErr (t0, t, env) ->
                 (* 2.2 if the two top items are errors we merge them *)
-                dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
+                dbg (fun () -> say "  @[<hov 2>RECOVERY: push (squashed) %s on [%s]\n@]@" (show_token t) (show_env env));
                 let t = merge_parse_error t0 t in
                 let chkp = offer (input_needed env) (valid t) in
                 loop st chkp) *)

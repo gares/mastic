@@ -8,7 +8,8 @@ Coverage
   READ (Parser.ERROR_TOKEN [('$',4,5)])
   * ERROR: stack [fun]
     LOOKAHEAD: (Parser.ERROR_TOKEN [('$',4,5)]) (invalid token)
-    RECOVERY: push (squashed) (Parser.ERROR_TOKEN [('fun',0,3); ('$',4,5)]) on []
+    RECOVERY: push (squashed) (Parser.ERROR_TOKEN [('fun',0,3); ('$',4,5)]) on 
+    []
   SHIFT [perr]
   READ Parser.EOF
   RED 1 [perr]
