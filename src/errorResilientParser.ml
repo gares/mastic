@@ -131,11 +131,16 @@ struct
   let pp_xsymbol fmt = function X s -> Format.fprintf fmt "%s" @@ show_symbol None s
 
   let pp_prod fmt x =
-    Format.fprintf fmt "[%a := %a]" pp_xsymbol (lhs x)
+    Format.fprintf fmt "[%a -> %a]" pp_xsymbol (lhs x)
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
       (rhs x)
+  let pp_prodn fmt (lhs,rhs,_,n) =
+    Format.fprintf fmt "[%a -> %a]@%d" pp_xsymbol lhs
+      (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
+      rhs n
 
   let pp_prods fmt l = Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") pp_prod fmt l
+  let pp_prodsn fmt l = Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") pp_prodn fmt l
 
   let merge_parse_error x y =
     match (match_error_token x, match_error_token y) with
@@ -241,6 +246,7 @@ struct
             dbg (fun () -> say "@[<hov 2>  LOOKAHEAD: %s (out of place token)@]@\n" (show_token next_token.t));
             let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
             let productions = automaton_productions env in
+            dbg (fun () -> say "@[<hov 2>    STATE: %a@]@\n" pp_prodsn productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: reductions: %a@]@\n" pp_prods reducible_productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: tokens: %a@]@\n" pp_gens acceptable_tokens);
             begin

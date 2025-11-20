@@ -70,7 +70,8 @@ let token_of_terminal : type a. a I.terminal -> (string * token) option = functi
   | T_LPAREN -> Some ("(", Parser.LPAREN)
   | T_INT -> None
   | T_IF -> Some ("if", Parser.IF)
-  | T_IDENT -> None
+  (* | T_IDENT -> None *)
+  | T_IDENT -> Some("_", Parser.IDENT "_") (* do we want this? eg: fun ( x := 1) *)
   | T_FUN -> Some ("fun", Parser.FUN)
   | T_ERROR_TOKEN -> None
   | T_EOF -> Some ("eof", Parser.EOF)
@@ -113,6 +114,19 @@ module Recovery = struct
     | I.X (I.N I.N_list_func), _, _, _ -> true
     | _ -> false
 
+  let is_ident x =
+    match x.Mastic.ErrorResilientParser.t with Parser.IDENT _ -> true | _ -> false
+  let is_assign x = x.Mastic.ErrorResilientParser.t = Parser.ASSIGN
+
+  let is_function_name = function
+    | I.X (I.N I.N_func), _, _, 1  -> true
+    | _ -> false
+
+let is_assign_expected (_,l,_,n) = match List.nth l n with
+  | I.X (I.N I.N_cmd) -> true
+  | I.X (I.N I.N_list_cmd) -> true
+  | _ -> false
+
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
   let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens ~reducible_productions:prods
       ~generation_streak =
@@ -120,16 +134,20 @@ module Recovery = struct
     match tok with
     (* tokens that look like a good point to re-start parsing (or terminate).
        these are typically the reserved words (keywords) of the language *)
-    | { t = FUN | EOF | SEMICOLON | RPAREN | THEN | ELSE } -> begin
+    | { t = FUN | EOF | SEMICOLON | ASSIGN | LPAREN | RPAREN | THEN | ELSE } -> begin
         match prods with
         | p :: _ ->
             (* if we can reduce we do it. it could be we are parsing something
                optional for example, but the next token is not a lookahead we exepct *)
             Reduce p
         | [] -> (
+            if is_assign tok && List.exists is_assign_expected productions && generation_streak < 10 then
+              GenerateToken { tok with t = Parser.IDENT "_x"; s = "_x" }
+            else
             (* we try to complete one of the current productions *)
             match acceptable_tokens with
             | x :: _ ->
+                let x = if is_ident x && List.exists is_function_name productions then { x with t = Parser.IDENT "_f"; s = "_f" } else x in
                 (* this is a token that makes the automaton shift *)
                 if generation_streak < 10 then GenerateToken x else TurnIntoError
             | [] ->

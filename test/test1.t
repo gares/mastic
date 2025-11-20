@@ -54,12 +54,11 @@ Fuzz 10
        (Ast.Func.Err [(')',14,15)]); (Ast.Func.Fun ("g", []))])
   
   fuzzed input #7: fun   ( x := 1) fun g ( )
-  error:           ^^^   ^ ^ ^^ ^^           recovered syntax error
-  error:           fun   ( x := 1)           lex errors
+  error:                 ^ completed with _f
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('(',6,7)]); (Ast.Func.Err [('x',8,9)]);
-       (Ast.Func.Err [(':=',10,12)]); (Ast.Func.Err [('1',13,14)]);
-       (Ast.Func.Err [(')',14,15)]); (Ast.Func.Fun ("g", []))])
+     [(Ast.Func.Fun ("_f", [(Ast.Cmd.Assign ("x", (Ast.Expr.Lit 1)))]));
+       (Ast.Func.Fun ("g", []))])
+  note: not a subterm
   
   fuzzed input #8: fun f ( x := 1) fun $ ( )
   error:                           ^^^ ^ ^ ^ recovered syntax error
@@ -114,15 +113,18 @@ Fuzz 10
   note: not a subterm
   
   fuzzed input #14: fun;f ( x := 1) fun g ( )
-  error:            ^^^^^ ^ ^ ^^ ^^           recovered syntax error
-  error:            fun;f ( x := 1)           lex errors
-  error:               ^ completed with _
+  error:               ^^ ^ ^ ^^ ^^           recovered syntax error
+  error:               ;f ( x := 1)           lex errors
+  error:               ^ completed with _f
+  error:               ^ completed with (
+  error:               ^ completed with )
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('_',3,3)]); (Ast.Func.Err [(';',3,4)]);
+     [(Ast.Func.Fun ("_f", [])); (Ast.Func.Err [(';',3,4)]);
        (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
        (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
        (Ast.Func.Err [('1',13,14)]); (Ast.Func.Err [(')',14,15)]);
        (Ast.Func.Fun ("g", []))])
+  note: not a subterm
   
   fuzzed input #15: fun f ( x := 1);fun g ( )
   error:                           ^          recovered syntax error
@@ -165,15 +167,18 @@ Fuzz 10
   note: not a subterm
   
   fuzzed input #19: fun;f ( x := 1) fun g ( )
-  error:            ^^^^^ ^ ^ ^^ ^^           recovered syntax error
-  error:            fun;f ( x := 1)           lex errors
-  error:               ^ completed with _
+  error:               ^^ ^ ^ ^^ ^^           recovered syntax error
+  error:               ;f ( x := 1)           lex errors
+  error:               ^ completed with _f
+  error:               ^ completed with (
+  error:               ^ completed with )
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('_',3,3)]); (Ast.Func.Err [(';',3,4)]);
+     [(Ast.Func.Fun ("_f", [])); (Ast.Func.Err [(';',3,4)]);
        (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
        (Ast.Func.Err [('x',8,9)]); (Ast.Func.Err [(':=',10,12)]);
        (Ast.Func.Err [('1',13,14)]); (Ast.Func.Err [(')',14,15)]);
        (Ast.Func.Fun ("g", []))])
+  note: not a subterm
   
   fuzzed input #20: fun f ( x := 1) fun g ( )
   ast: (Ast.Prog.P

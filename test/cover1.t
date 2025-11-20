@@ -6,6 +6,7 @@ Coverage
   READ (Parser.IDENT "x")
   * ERROR: stack []
     LOOKAHEAD: (Parser.IDENT "x") (out of place token)
+      STATE: 
       PROPOSE: reductions: 
       PROPOSE: tokens: 
     RECOVERY: turn (Parser.IDENT "x") into (Parser.ERROR_TOKEN [('x',0,1)]) and push
