@@ -32,9 +32,9 @@ module type Recovery = sig
   type 'a env
   type production
 
-  val token_of_terminal : 'a terminal -> (string * token) option
   val match_error_token : token -> Error.t option
   val build_error_token : Error.t -> token
+  val is_eof_token : token -> bool
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
@@ -44,10 +44,8 @@ module type Recovery = sig
     generation_streak:int ->
     (token, production) recovery_action
 
+  val token_of_terminal : 'a terminal -> (string * token) option
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
-  val merge_parse_error : token -> token -> token
-  val is_error : 'a -> 'a symbol -> bool
-  val is_eof_token : token -> bool
 end
 
 module type IncrementalParser = sig
@@ -90,15 +88,15 @@ struct
     | None -> None
     | Some (Element (tx, x, b, e)) ->
         let tx = incoming_symbol tx in
-        Some (is_error x tx, reduce_as_parse_error x tx b e, try_pop env)
+        Some (reduce_as_parse_error x tx b e, try_pop env)
 
   let ensure_top2_are_error_token env =
     match ensure_top_is_error_token env with
     | None -> Empty
-    | Some (_, x, env1) -> (
+    | Some (x, env1) -> (
         match ensure_top_is_error_token env1 with
         | None -> TopIsErr (x, env1)
-        | Some (_, y, env2) -> Top2AreErr (x, y, env2))
+        | Some (y, env2) -> Top2AreErr (x, y, env2))
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -132,6 +130,11 @@ struct
     Printf.sprintf "[%s := %s]" (show_xsymbol (lhs x)) (String.concat " " (List.map show_xsymbol (rhs x)))
 
   let show_prods l = String.concat " " (List.map show_prod l)
+
+  let merge_parse_error x y =
+    match (match_error_token x, match_error_token y) with
+    | Some x, Some y -> build_error_token (Error.merge x y)
+    | _ -> assert false
 
   (* requires semantic actions to be pure *)
   let ensure_reduces : type a. a env -> production -> int -> production list =
@@ -220,7 +223,7 @@ struct
             begin
               match ensure_top_is_error_token env with
               | None -> failwith "the grammar start symbol must include an atom for parse error"
-              | Some (_, t0, env) ->
+              | Some (t0, env) ->
                   let t = merge_parse_error t0 t in
                   dbg (fun () -> say "  RECOVERY: push (squashed) %s on [%s]\n" (show_token t) (show_env env));
                   let chkp = offer (input_needed env) (valid t) in

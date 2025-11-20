@@ -153,20 +153,6 @@ module Recovery = struct
     | I.N I.N_list_cmd -> ERROR_TOKEN (Ast.Cmd.List.build_token (Mastic.Error.loc x b e))
     | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (show_symbol (Some x) tx) b e))
 
-  let is_error : type a. a -> a I.symbol -> bool =
-   fun x tx ->
-    match tx with
-    | I.N I.N_main -> Ast.Prog.is_err x
-    | I.N I.N_cmd -> Ast.Cmd.is_err x
-    | I.N I.N_func -> Ast.Func.is_err x
-    | I.N I.N_expr -> Ast.Expr.is_err x
-    | _ -> false
-
-  let merge_parse_error x y =
-    let open Mastic in
-    let open Parser in
-    match (x, y) with ERROR_TOKEN x, ERROR_TOKEN y -> ERROR_TOKEN (Error.merge x y) | _ -> assert false
-
   let is_eof_token = function EOF -> true | _ -> false
 end
 
@@ -257,9 +243,11 @@ and iter_prog f = function
   | Ast.Prog.Err e -> List.iter (iter_loc f) e
 
 let underline l _ b e = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i < e.pos_cnum then Bytes.set l i '^' else ()) l
+
 let write_lex_err l x b e =
   match x with
-  | Mastic.Error.Lex s -> Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i < e.pos_cnum then Bytes.set l i s.[i-b.pos_cnum] else ()) l
+  | Mastic.Error.Lex s ->
+      Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i < e.pos_cnum then Bytes.set l i s.[i - b.pos_cnum] else ()) l
   | _ -> ()
 
 let show_result header line errbuf v =

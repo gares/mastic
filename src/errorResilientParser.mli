@@ -12,19 +12,26 @@ module type Recovery = sig
   type token
 
   val show_token : token -> string
+  (** for debugging *)
 
   type 'a symbol
   type xsymbol
 
   val show_symbol : 'a option -> 'a symbol -> string
+  (** for debugging *)
 
   type 'a terminal
   type 'a env
   type production
 
-  val token_of_terminal : 'a terminal -> (string * token) option
   val match_error_token : token -> Error.t option
+  (** identify the [ERROR_TOKEN] *)
+
   val build_error_token : Error.t -> token
+  (** build the [ERROR_TOKEN] *)
+
+  val is_eof_token : token -> bool
+  (** identify the [EOF] token *)
 
   val handle_unexpected_token :
     productions:(xsymbol * xsymbol list * production * int) list ->
@@ -33,11 +40,14 @@ module type Recovery = sig
     reducible_productions:production list ->
     generation_streak:int ->
     (token, production) recovery_action
+  (** called when [next_token] does not fit *)
+
+  val token_of_terminal : 'a terminal -> (string * token) option
+  (** used to generate [~acceptable_tokens] for [handle_unexpected_token] *)
 
   val reduce_as_parse_error : 'a -> 'a symbol -> Lexing.position -> Lexing.position -> token
-  val merge_parse_error : token -> token -> token
-  val is_error : 'a -> 'a symbol -> bool
-  val is_eof_token : token -> bool
+  (** store in the error token an ast using the [build_token] api, eg
+      [ERROR_TOKEN (Ast.Expr.build_token (Mastic.Error.loc x b e))] *)
 end
 
 module type IncrementalParser = sig

@@ -42,9 +42,6 @@ module type ListSig = functor (X : ListArg) -> sig
   val show : t -> string
   val of_token : Error.t -> t
   val build_token : t Error.located -> Error.t
-
-  (* val match_token : ErrorToken.t -> t option *)
-  val is_err : t -> bool
   val iter : (X.t -> unit) -> (Error.t_ Error.located -> unit) -> t -> unit
 end
 
@@ -60,7 +57,7 @@ functor
 
     type Error.t_ += List of t
 
-    let (Error.Registered { of_token; build_token; is_err }) =
+    let (Error.Registered { of_token; build_token }) =
       Error.register name
         {
           pp;
