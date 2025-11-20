@@ -4,7 +4,6 @@ type 'a located = 'a * position * position
 
 let pp_located f fmt (s, b, e) = Format.fprintf fmt "(%a,%d,%d)" f s b.pos_cnum e.pos_cnum
 let show_located f x = Format.asprintf "%a" (pp_located f) x
-
 let loc x b e = (x, b, e)
 let unloc (x, _, _) = x
 let bloc (_, b, _) = b
@@ -23,38 +22,35 @@ type 'a registration = {
   build_error : 'a -> t_;
 }
 
-type 'a registered =
-  Registered of {
-    of_token : t -> 'a;
-    build_token : 'a located -> t;
-    is_err : 'a -> bool
-  }
+type 'a registered = Registered of { of_token : t -> 'a; build_token : 'a located -> t; is_err : 'a -> bool }
 
-module SM = Map.Make(String)
+module SM = Map.Make (String)
 
 type xregistration = Registration : 'a registration -> xregistration
 
 let registered = ref SM.empty
 
 let register name r : 'a registered =
-  if SM.mem name !registered then
-    failwith ("error " ^ name ^ " already registered");
+  if SM.mem name !registered then failwith ("error " ^ name ^ " already registered");
   registered := SM.add name (Registration r) !registered;
-  Registered {
-    is_err = (fun x -> match r.match_ast x with Some _ -> true | None -> false);
-    of_token = (fun x -> r.build_ast x);
-    build_token = (fun x -> [ map r.build_error x ])
-  }
+  Registered
+    {
+      is_err = (fun x -> match r.match_ast x with Some _ -> true | None -> false);
+      of_token = (fun x -> r.build_ast x);
+      build_token = (fun x -> [ map r.build_error x ]);
+    }
 
 type t_ += Lex of string
 
-let Registered { build_token = mkLexError } = register "__lex__" {
-  pp = (fun fmt x -> Format.fprintf fmt "'%s'" x);
-  match_ast = (fun _ -> None);
-  build_ast = (fun _ -> assert false);
-  match_error = (function Lex s -> Some s | _ -> None);
-  build_error = (fun x -> Lex x)
-}
+let (Registered { build_token = mkLexError }) =
+  register "__lex__"
+    {
+      pp = (fun fmt x -> Format.fprintf fmt "'%s'" x);
+      match_ast = (fun _ -> None);
+      build_ast = (fun _ -> assert false);
+      match_error = (function Lex s -> Some s | _ -> None);
+      build_error = (fun x -> Lex x);
+    }
 
 (* let iter f g l = List.iter (fun (x,b,e) -> match x with Lex s -> g (s,b,e) | Ast s -> f (s,b,e)) l *)
 let min_pos p1 p2 = if p1.pos_cnum < p2.pos_cnum then p1 else p2
@@ -69,12 +65,14 @@ let merge = ( @ )
 let pp fmt e =
   let f fmt x =
     let rec aux = function
-    | [] -> assert false
-    | (_,Registration r) :: rest ->
-        match r.match_error (unloc x) with
-        | Some v -> pp_located r.pp fmt (loc v (bloc x) (eloc x))
-        | None -> aux rest
-    in aux (SM.bindings !registered) in
-  Format.fprintf fmt "@[<hov 2>[%a]@]"
-    (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") f) e
+      | [] -> assert false
+      | (_, Registration r) :: rest -> (
+          match r.match_error (unloc x) with
+          | Some v -> pp_located r.pp fmt (loc v (bloc x) (eloc x))
+          | None -> aux rest)
+    in
+    aux (SM.bindings !registered)
+  in
+  Format.fprintf fmt "@[<hov 2>[%a]@]" (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") f) e
+
 let show x = Format.asprintf "%a" pp x

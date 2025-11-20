@@ -53,12 +53,9 @@ let show_symbol : type a. a option -> a I.symbol -> string =
   | I.N I.N_cmd -> x |> Option.fold ~none:"<cmd>" ~some:Ast.Cmd.show
   | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
   | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
-  | I.N I.N_ne_list_expr ->
-      x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> Ast.Expr.List.show x)
-  | I.N I.N_list_func ->
-      x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.Func.List.show x)
-  | I.N I.N_list_cmd ->
-      x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Cmd.List.show x)
+  | I.N I.N_ne_list_expr -> x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> Ast.Expr.List.show x)
+  | I.N I.N_list_func -> x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.Func.List.show x)
+  | I.N I.N_list_cmd -> x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Cmd.List.show x)
   | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
   | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
   | I.T t -> show_terminal t
@@ -71,14 +68,14 @@ let token_of_terminal : type a. a I.terminal -> (string * token) option = functi
   | T_SEMICOLON -> Some (";", Parser.SEMICOLON)
   | T_PLUS -> Some ("+", Parser.PLUS)
   | T_LPAREN -> Some ("(", Parser.LPAREN)
-  | T_INT -> Some ("int", Parser.INT 0)
+  | T_INT -> None
   | T_IF -> Some ("if", Parser.IF)
-  | T_IDENT -> Some ("ident", Parser.IDENT "_")
+  | T_IDENT -> None
   | T_FUN -> Some ("fun", Parser.FUN)
   | T_ERROR_TOKEN -> None
   | T_EOF -> Some ("eof", Parser.EOF)
   | T_ELSE -> Some ("else", Parser.ELSE)
-  | _ -> None
+  | T_error -> assert false
 
 (* -------------------------------------------------------------------------- *)
 
@@ -117,8 +114,8 @@ module Recovery = struct
     | _ -> false
 
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
-  let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens
-      ~reducible_productions:prods ~generation_streak =
+  let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens ~reducible_productions:prods
+      ~generation_streak =
     let open Mastic.ErrorResilientParser in
     match tok with
     (* tokens that look like a good point to re-start parsing (or terminate).
@@ -133,18 +130,16 @@ module Recovery = struct
             (* we try to complete one of the current productions *)
             match acceptable_tokens with
             | x :: _ ->
-              (* this is a token that makes the automaton shift *)
-              if generation_streak < 10 then GenerateToken x else TurnIntoError
+                (* this is a token that makes the automaton shift *)
+                if generation_streak < 10 then GenerateToken x else TurnIntoError
             | [] ->
                 (* if we are parsing the top level production there is not point in padding
                    TODO: maybe all list(something) should do the same *)
                 let at_start = productions |> List.exists is_production_for_sart_symbol in
                 if at_start || generation_streak >= 10 then TurnIntoError
-                else GenerateHole (* this is a hole, the error production for the current nonterminal *)
-                )
+                else GenerateHole (* this is a hole, the error production for the current nonterminal *))
       end
-    | _ ->
-      TurnIntoError 
+    | _ -> TurnIntoError
 
   let reduce_as_parse_error : type a. a -> a I.symbol -> position -> position -> token =
    fun x tx b e ->
@@ -156,7 +151,7 @@ module Recovery = struct
     | I.N I.N_list_func -> ERROR_TOKEN (Ast.Func.List.build_token (Mastic.Error.loc x b e))
     | I.N I.N_ne_list_expr -> ERROR_TOKEN (Ast.Expr.List.build_token (Mastic.Error.loc x b e))
     | I.N I.N_list_cmd -> ERROR_TOKEN (Ast.Cmd.List.build_token (Mastic.Error.loc x b e))
-    | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (show_terminal y) b e))
+    | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (show_symbol (Some x) tx) b e))
 
   let is_error : type a. a -> a I.symbol -> bool =
    fun x tx ->
@@ -184,9 +179,13 @@ let included_opt f x y = match (x, y) with None, None -> true | Some x, Some y -
 let rec included_prog : Ast.Prog.t -> Ast.Prog.t -> bool =
  fun x y ->
   let open Ast.Prog in
-  match (x, y) with Err _, _ -> true | P x, P y -> Mastic.ErrorList.included included_fun Ast.Func.is_err x y | _ -> false
+  match (x, y) with
+  | Err _, _ -> true
+  | P x, P y -> Mastic.ErrorList.included included_fun Ast.Func.is_err x y
+  | _ -> false
 
-and included_fun : Ast.Func.t -> Ast.Func.t -> bool = fun x y ->
+and included_fun : Ast.Func.t -> Ast.Func.t -> bool =
+ fun x y ->
   let open Ast.Func in
   match (x, y) with
   | Err _, _ -> true
@@ -229,17 +228,17 @@ and iter_loc f x =
 
 and iter_expr f = function
   | Ast.Expr.Add (e1, e2) ->
-    iter_expr f e1;
-    iter_expr f e2
+      iter_expr f e1;
+      iter_expr f e2
   | Ast.Expr.Mul (e1, e2) ->
-    iter_expr f e1;
-    iter_expr f e2
+      iter_expr f e1;
+      iter_expr f e2
   | Ast.Expr.Call (_, l) -> Ast.Expr.List.iter (iter_expr f) (iter_loc f) l
   | Ast.Expr.Lit _ -> ()
   | Err e -> List.iter (iter_loc f) e
 
 and iter_func f = function
-  | Ast.Func.Fun(_,l) -> Ast.Cmd.List.iter (iter_cmd f) (iter_loc f) l
+  | Ast.Func.Fun (_, l) -> Ast.Cmd.List.iter (iter_cmd f) (iter_loc f) l
   | Ast.Func.Err e -> List.iter (iter_loc f) e
 
 and iter_cmd f = function
@@ -257,17 +256,30 @@ and iter_prog f = function
   | Ast.Prog.P l -> Ast.Func.List.iter (iter_func f) (iter_loc f) l
   | Ast.Prog.Err e -> List.iter (iter_loc f) e
 
-
-let underline l _ b e = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i <= e.pos_cnum then Bytes.set l i '^' else ()) l
+let underline l _ b e = Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i < e.pos_cnum then Bytes.set l i '^' else ()) l
+let write_lex_err l x b e =
+  match x with
+  | Mastic.Error.Lex s -> Bytes.iteri (fun i _ -> if b.pos_cnum <= i && i < e.pos_cnum then Bytes.set l i s.[i-b.pos_cnum] else ()) l
+  | _ -> ()
 
 let show_result header line errbuf v =
   let my_header = "error: " in
   let padding = String.length header - String.length my_header in
   let padding = String.make padding ' ' in
-  let b = String.to_bytes (String.make (String.length line) ' ') in
+
+  let white = String.make (String.length line) ' ' in
+
+  let b = String.to_bytes white in
   iter_prog (underline b) v;
   let b = String.of_bytes b in
-  if String.index_opt b '^' <> None then Printf.printf "%s%s%s recovered syntax error\n" my_header padding b;
+
+  let c = String.to_bytes white in
+  iter_prog (write_lex_err c) v;
+  let c = String.of_bytes c in
+
+  if b <> white then Printf.printf "%s%s%s recovered syntax error\n" my_header padding b;
+  if c <> white then Printf.printf "%s%s%s lex errors\n" my_header padding c;
+
   List.rev errbuf
   |> List.iter (fun (p, s) ->
          let col = p.Lexing.pos_cnum in

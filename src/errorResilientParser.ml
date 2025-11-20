@@ -96,9 +96,9 @@ struct
     match ensure_top_is_error_token env with
     | None -> Empty
     | Some (_, x, env1) -> (
-          match ensure_top_is_error_token env1 with
-          | None -> TopIsErr(x,env1)
-          | Some (_, y, env2) -> Top2AreErr (x, y, env2))
+        match ensure_top_is_error_token env1 with
+        | None -> TopIsErr (x, env1)
+        | Some (_, y, env2) -> Top2AreErr (x, y, env2))
 
   let tail = function [] -> [] | _ :: xs -> xs
   let rec drop n l = if n = 0 then l else drop (n - 1) (List.tl l)
@@ -108,7 +108,13 @@ struct
     | None -> []
     | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
-  let valid t = match match_error_token t with None -> assert false | Some x -> let b,e = Error.span x in (t, b, e)
+  let valid t =
+    match match_error_token t with
+    | None -> assert false
+    | Some x ->
+        let b, e = Error.span x in
+        (t, b, e)
+
   let is_error_token x = match match_error_token x with None -> false | _ -> true
   let show_element elt = match elt with Element (st, x, _, _) -> show_symbol (Some x) @@ incoming_symbol st
 
@@ -182,26 +188,25 @@ struct
         loop st chkp
     (* reading: we save the token into a buffer when empty, and read from the buffer if not empty *)
     | InputNeeded _env ->
-        if st.ticks = 0 then
-           invalid_arg "Mastic: too many loops. This should never happen, please report the issue"
+        if st.ticks = 0 then invalid_arg "Mastic: too many loops. This should never happen, please report the issue"
         else
-        let ((tok, _, _) as token), st =
-          match st.incoming_toks with
-          | t :: _ -> (tok_to_triple t, st)
-          | [] ->
-              let t = token st.lexbuf in
-              let generation_streak, ticks =
-                if is_eof_token t then st.generation_streak, st.ticks-1
-                else 0, st.ticks+1 in
-              let toks = Lexing.lexeme st.lexbuf in
-              let s = if toks = "" then show_token t else toks in
-              let b = st.lexbuf.lex_start_p and e = st.lexbuf.lex_curr_p in
-              let last_tok = { s; t; b; e } in
-              (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak; ticks })
-        in
-        dbg (fun () -> say "READ %s\n" (show_token @@ tok));
-        let chkp = offer ckpt token in
-        loop st chkp
+          let ((tok, _, _) as token), st =
+            match st.incoming_toks with
+            | t :: _ -> (tok_to_triple t, st)
+            | [] ->
+                let t = token st.lexbuf in
+                let generation_streak, ticks =
+                  if is_eof_token t then (st.generation_streak, st.ticks - 1) else (0, st.ticks + 1)
+                in
+                let toks = Lexing.lexeme st.lexbuf in
+                let s = if toks = "" then show_token t else toks in
+                let b = st.lexbuf.lex_start_p and e = st.lexbuf.lex_curr_p in
+                let last_tok = { s; t; b; e } in
+                (tok_to_triple last_tok, { st with incoming_toks = [ last_tok ]; generation_streak; ticks })
+          in
+          dbg (fun () -> say "READ %s\n" (show_token @@ tok));
+          let chkp = offer ckpt token in
+          loop st chkp
     (* handling errors, two cases:
        1. the lookahead does not fit (fail to shift)
        2. the stack does not reduce *)
@@ -233,25 +238,22 @@ struct
               match
                 (* TODO: do not receive incoming_tokens, the action forces them *)
                 (* TODO: can incoming tokens be more than 1 token? maybe generate could return a list? *)
-                handle_unexpected_token ~productions ~next_token ~reducible_productions
-                  ~acceptable_tokens ~generation_streak:st.generation_streak
+                handle_unexpected_token ~productions ~next_token ~reducible_productions ~acceptable_tokens
+                  ~generation_streak:st.generation_streak
               with
-              | TurnIntoError when is_eof_token next_token.t ->
+              | TurnIntoError when is_eof_token next_token.t -> begin
+                  match ensure_top2_are_error_token env with
+                  | Empty | TopIsErr _ -> assert false
+                  | Top2AreErr (x, y, env) ->
+                      let t = merge_parse_error x y in
+                      (* TODO: fix locs *)
+                      let ((_, b, e) as valid) = valid t in
+                      dbg (fun () -> say "  RECOVERY: squash %s and %s and push\n" (show_token x) (show_token y));
 
-                  begin match ensure_top2_are_error_token env with
-                  | Empty
-                  | TopIsErr _ -> assert false
-                  | Top2AreErr (x,y,env) ->
-                      let t = merge_parse_error x y in (* TODO: fix locs *)
-                  let _,b,e as valid = valid t in
-                  dbg (fun () ->
-                      say "  RECOVERY: squash %s and %s and push\n" (show_token x) (show_token y));
-
-                  let chkp = offer (input_needed env) valid in
-                  let incoming_toks = { t ; s = ""; b; e } :: incoming_toks in
-                  loop { st with incoming_toks } chkp
-
-                  end
+                      let chkp = offer (input_needed env) valid in
+                      let incoming_toks = { t; s = ""; b; e } :: incoming_toks in
+                      loop { st with incoming_toks } chkp
+                end
               | TurnIntoError ->
                   let t =
                     {
@@ -314,6 +316,6 @@ struct
 
   let parse lexbuf =
     let chkp = main lexbuf.lex_curr_p in
-    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = []; ticks=1 } in
+    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = []; ticks = 1 } in
     loop st chkp
 end

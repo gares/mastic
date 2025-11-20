@@ -3,7 +3,6 @@ Fuxx
   $ echo 'fun f ( if 1 then x :=  else x := 1 )' | ./main.exe -fuzz 20 -rands 21,7,23,25,26,13,16,18,5,5,2,21,19,30,11,24,6,4,31,5
   random: 21,7,23,25,26,13,16,18,5,5,2,21,19,30,11,24,6,4,31,5
   input: fun f ( if 1 then x :=  else x := 1 )
-  error:                         ^             recovered syntax error
   error:                         ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
@@ -13,13 +12,14 @@ Fuxx
          ))])
   
   fuzzed input #1: fun f ( if 1 then x :;  else x := 1 )
-  error:                             ^^^^  ^^^^^^^^^^^^^ recovered syntax error
+  error:                             ^ ^   ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:                             x :   else x := 1 ) lex errors
   error:                                   ^ completed with _
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
-             (Ast.Cmd.Err [('ident',18,19); (':',20,21)]), None));
+             (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None));
            (Ast.Cmd.Err [('_',24,24)])]
          )); (Ast.Func.Err [('else',24,28)]); (Ast.Func.Err [('x',29,30)]);
        (Ast.Func.Err [(':=',31,33)]); (Ast.Func.Err [('1',34,35)]);
@@ -27,7 +27,6 @@ Fuxx
   note: not a subterm
   
   fuzzed input #2: fun f ( if 1 then x :=  else x := 1 )
-  error:                                   ^             recovered syntax error
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
@@ -37,7 +36,8 @@ Fuxx
          ))])
   
   fuzzed input #3: fun f ( if 1 then x := $else x := 1 )
-  error:                                  ^^             recovered syntax error
+  error:                                  ^              recovered syntax error
+  error:                                  $              lex errors
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
@@ -46,7 +46,8 @@ Fuxx
          ))])
   
   fuzzed input #4: fun f ( if 1 then x :=  e se x := 1 )
-  error:                                          ^^^    recovered syntax error
+  error:                                          ^^     recovered syntax error
+  error:                                          :=     lex errors
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
@@ -63,7 +64,8 @@ Fuxx
   note: not a subterm
   
   fuzzed input #5: fun f ( if 1 then x :=  el$e x := 1 )
-  error:                                     ^^   ^^^    recovered syntax error
+  error:                                     ^    ^^     recovered syntax error
+  error:                                     $    :=     lex errors
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
@@ -81,7 +83,8 @@ Fuxx
   note: not a subterm
   
   fuzzed input #6: fun f ( if 1  hen x :=  else x := 1 )
-  error:                         ^^^^^^^^^ ^             recovered syntax error
+  error:                         ^^^ ^ ^^                recovered syntax error
+  error:                         hen x :=                lex errors
   error:                                   ^ completed with then
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
@@ -96,7 +99,8 @@ Fuxx
          ))])
   
   fuzzed input #7: fun f ( if 1 the  x :=  else x := 1 )
-  error:                        ^^^^ ^^^^^ ^             recovered syntax error
+  error:                        ^^^  ^ ^^                recovered syntax error
+  error:                        the  x :=                lex errors
   error:                                   ^ completed with then
   error:                                   ^ completed with _
   ast: (Ast.Prog.P
@@ -111,7 +115,8 @@ Fuxx
          ))])
   
   fuzzed input #8: fun f ( if 1 then ; :=  else x := 1 )
-  error:                             ^ ^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:                               ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:                               :=  else x := 1 ) lex errors
   error:                             ^ completed with _
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
@@ -124,9 +129,10 @@ Fuxx
   note: not a subterm
   
   fuzzed input #9: fun f$( if 1 then x :=  else x := 1 )
-  error:           ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:           ^^^ ^^^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:           fun f$( if 1 then x :=  else x := 1 ) lex errors
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('ident',4,5); ('$',5,6)]);
+     [(Ast.Func.Err [('fun',0,3); ('f',4,5); ('$',5,6)]);
        (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('if',8,10)]);
        (Ast.Func.Err [('1',11,12)]); (Ast.Func.Err [('then',13,17)]);
        (Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(':=',20,22)]);
@@ -135,9 +141,10 @@ Fuxx
        (Ast.Func.Err [(')',36,37)])])
   
   fuzzed input #10: fun f$( if 1 then x :=  else x := 1 )
-  error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:            ^^^ ^^^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:            fun f$( if 1 then x :=  else x := 1 ) lex errors
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('ident',4,5); ('$',5,6)]);
+     [(Ast.Func.Err [('fun',0,3); ('f',4,5); ('$',5,6)]);
        (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('if',8,10)]);
        (Ast.Func.Err [('1',11,12)]); (Ast.Func.Err [('then',13,17)]);
        (Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(':=',20,22)]);
@@ -146,7 +153,8 @@ Fuxx
        (Ast.Func.Err [(')',36,37)])])
   
   fuzzed input #11: fu$ f ( if 1 then x :=  else x := 1 )
-  error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:            ^^^ ^ ^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:            fu$ f ( if 1 then x :=  else x := 1 ) lex errors
   ast: (Ast.Prog.P
      [(Ast.Func.Err [('fu',0,2)]); (Ast.Func.Err [('$',2,3)]);
        (Ast.Func.Err [('f',4,5)]); (Ast.Func.Err [('(',6,7)]);
@@ -157,13 +165,14 @@ Fuxx
        (Ast.Func.Err [('1',34,35)]); (Ast.Func.Err [(')',36,37)])])
   
   fuzzed input #12: fun f ( if 1 then x :;  else x := 1 )
-  error:                              ^^^^  ^^^^^^^^^^^^^ recovered syntax error
+  error:                              ^ ^   ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:                              x :   else x := 1 ) lex errors
   error:                                    ^ completed with _
   error:                                    ^ completed with )
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.If ((Ast.Expr.Lit 1),
-             (Ast.Cmd.Err [('ident',18,19); (':',20,21)]), None));
+             (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None));
            (Ast.Cmd.Err [('_',24,24)])]
          )); (Ast.Func.Err [('else',24,28)]); (Ast.Func.Err [('x',29,30)]);
        (Ast.Func.Err [(':=',31,33)]); (Ast.Func.Err [('1',34,35)]);
@@ -171,7 +180,6 @@ Fuxx
   note: not a subterm
   
   fuzzed input #13: fun f ( if 1 then x :=  else x := 1 )
-  error:                                    ^             recovered syntax error
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
@@ -181,7 +189,8 @@ Fuxx
          ))])
   
   fuzzed input #14: fun f ( if 1 then x :=  else x;:= 1 )
-  error:                                    ^     ^^^^^^  recovered syntax error
+  error:                                           ^^ ^   recovered syntax error
+  error:                                           := 1   lex errors
   error:                                    ^ completed with _
   error:                                          ^ completed with :=
   error:                                          ^ completed with _
@@ -195,7 +204,8 @@ Fuxx
   note: not a subterm
   
   fuzzed input #15: fun f ( if $ then x :=  else x := 1 )
-  error:                       ^^           ^             recovered syntax error
+  error:                       ^                          recovered syntax error
+  error:                       $                          lex errors
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
@@ -205,7 +215,8 @@ Fuxx
          ))])
   
   fuzzed input #16: fun f ( if 1 then x :=  ;lse x := 1 )
-  error:                                    ^^^^^^^^^^^^  recovered syntax error
+  error:                                     ^^^ ^ ^^ ^   recovered syntax error
+  error:                                     lse x := 1   lex errors
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
@@ -213,13 +224,14 @@ Fuxx
              (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))), None));
            (Ast.Cmd.Err
               [((Ast.Cmd.Err
-                   [((Ast.Cmd.Err [('ident',25,28); ('x',29,30)]),25,30);
+                   [((Ast.Cmd.Err [('lse',25,28); ('x',29,30)]),25,30);
                      (':=',31,33)]),25,33); ('1',34,35)])]
          ))])
   note: not a subterm
   
   fuzzed input #17: fun f ; if 1 then x :=  else x := 1 )
-  error:                  ^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:                  ^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:                  ; if 1 then x :=  else x := 1 ) lex errors
   error:                  ^ completed with (
   error:                  ^ completed with )
   ast: (Ast.Prog.P
@@ -232,7 +244,8 @@ Fuxx
   note: not a subterm
   
   fuzzed input #18: fun   ( if 1 then x :=  else x := 1 )
-  error:            ^^^^  ^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:            ^^^   ^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:            fun   ( if 1 then x :=  else x := 1 ) lex errors
   ast: (Ast.Prog.P
      [(Ast.Func.Err [('fun',0,3); ('(',6,7)]); (Ast.Func.Err [('if',8,10)]);
        (Ast.Func.Err [('1',11,12)]); (Ast.Func.Err [('then',13,17)]);
@@ -242,21 +255,23 @@ Fuxx
        (Ast.Func.Err [(')',36,37)])])
   
   fuzzed input #19: fun f ( if 1 then x :=  else x  = 1 )
-  error:                                    ^    ^^ ^^^^  recovered syntax error
+  error:                                         ^  ^ ^   recovered syntax error
+  error:                                         x  = 1   lex errors
   error:                                    ^ completed with _
   ast: (Ast.Prog.P
      [(Ast.Func.Fun ("f",
          [(Ast.Cmd.Err
              [((Ast.Cmd.If ((Ast.Expr.Lit 1),
                   (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))),
-                  (Some (Ast.Cmd.Err [('ident',29,30); ('=',32,33)])))),8,33);
+                  (Some (Ast.Cmd.Err [('x',29,30); ('=',32,33)])))),8,33);
                ('1',34,35)])]
          ))])
   
   fuzzed input #20: fun f$( if 1 then x :=  else x := 1 )
-  error:            ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^ recovered syntax error
+  error:            ^^^ ^^^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error
+  error:            fun f$( if 1 then x :=  else x := 1 ) lex errors
   ast: (Ast.Prog.P
-     [(Ast.Func.Err [('fun',0,3); ('ident',4,5); ('$',5,6)]);
+     [(Ast.Func.Err [('fun',0,3); ('f',4,5); ('$',5,6)]);
        (Ast.Func.Err [('(',6,7)]); (Ast.Func.Err [('if',8,10)]);
        (Ast.Func.Err [('1',11,12)]); (Ast.Func.Err [('then',13,17)]);
        (Ast.Func.Err [('x',18,19)]); (Ast.Func.Err [(':=',20,22)]);

@@ -20,19 +20,13 @@ type 'a registration = {
   build_error : 'a -> t_;
 }
 
-type 'a registered =
-  Registered of {
-    of_token : t -> 'a;
-    build_token : 'a located -> t;
-    is_err : 'a -> bool
-  }
+type 'a registered = Registered of { of_token : t -> 'a; build_token : 'a located -> t; is_err : 'a -> bool }
 
 val register : string -> 'a registration -> 'a registered
 
 type t_ += Lex of string
+
 val mkLexError : string located -> t
-
-
 val span : t -> Lexing.position * Lexing.position
 val merge : t -> t -> t
 val show : t -> string

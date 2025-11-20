@@ -18,5 +18,6 @@ Coverage
   RED 2 [[(Ast.Func.Err [('x',0,1)])]; eof]
   ACCEPT
   error: ^ recovered syntax error
+  error: x lex errors
   ast: (Ast.Prog.P [(Ast.Func.Err [('x',0,1)])])
   

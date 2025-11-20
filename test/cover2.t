@@ -17,6 +17,7 @@ Coverage
   SHIFT [[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
   RED 2 [[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
   ACCEPT
-  error: ^^^^^ recovered syntax error
+  error: ^^^ ^ recovered syntax error
+  error: fun $ lex errors
   ast: (Ast.Prog.P [(Ast.Func.Err [('fun',0,3); ('$',4,5)])])
   
