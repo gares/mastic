@@ -46,14 +46,14 @@ First, you need these two tokens (the first one you may have it already)
 
 ```
 %token EOF
-%token <Mastic.ErrorToken.t Mastic.Error.located> ERROR_TOKEN
+%token <Mastic.Error.t> ERROR_TOKEN
 ```
 
 The lexer should  end with something like:
 
 ```
 | eof { EOF }
-| _ as x { ERROR_TOKEN (Mastic.ErrorToken.mkLexError (String.make 1 x) lexbuf.lex_start_p lexbuf.lex_curr_p) }
+| _ as x { ERROR_TOKEN Mastic.Error.(mkLexError (loc (String.make 1 x) lexbuf.lex_start_p lexbuf.lex_curr_p)) }
 ```
 
 The grammar should have an error case per non termianl:
