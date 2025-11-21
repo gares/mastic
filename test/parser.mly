@@ -32,7 +32,7 @@ func:
 /* boilerplate */ | e = ERROR_TOKEN;  { Func.of_token e }
 
 list_func:
-| { ErrorList.Nil }
+| { Func.List.mkNil }
 | f = func; l = list_func { Func.List.mkCons f l }
 /* boilerplate */ | e = ERROR_TOKEN; { Func.List.of_token e }
 
@@ -43,8 +43,8 @@ cmd:
 /* boilerplate */ | e = ERROR_TOKEN;  { Cmd.of_token e }
 
 list_cmd:
-| { ErrorList.Nil }
-| c = cmd {  Cmd.List.mkCons c ErrorList.Nil }
+| { Cmd.List.mkNil }
+| c = cmd {  Cmd.List.mkCons c Cmd.List.mkNil }
 | c = cmd; SEMICOLON; l = list_cmd { Cmd.List.mkCons c l }
 /* boilerplate */ | e = ERROR_TOKEN { Cmd.List.of_token e }
 
@@ -57,6 +57,6 @@ expr:
 /* boilerplate */ | e = ERROR_TOKEN;  { Expr.of_token e }
 
 ne_list_expr:
-| e = expr; { Expr.List.mkCons e ErrorList.Nil }
+| e = expr; { Expr.List.mkCons e Expr.List.mkNil }
 | e = expr; l = ne_list_expr { Expr.List.mkCons e l }
 /* boilerplate */ | e = ERROR_TOKEN { Expr.List.of_token e }
