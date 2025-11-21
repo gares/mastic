@@ -24,6 +24,7 @@ module type ListSig = functor (X : ListArg) -> sig
   val of_token : Error.t -> t
   val build_token : t Error.located -> Error.t
   val iter : (X.t -> unit) -> (Error.t_ Error.located -> unit) -> t -> unit
+  val mkNil : t
   val mkCons : X.t -> t -> t
 end
 
