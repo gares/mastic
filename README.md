@@ -56,7 +56,7 @@ The lexer should  end with something like:
 | _ as x { ERROR_TOKEN Mastic.Error.(mkLexError (loc (String.make 1 x) lexbuf.lex_start_p lexbuf.lex_curr_p)) }
 ```
 
-The grammar should have an error case per non termianl:
+The grammar should have an error case per non termianl (we assume the terminal `expr` has type `Expr.t`):
 
 ```
 expr:
@@ -64,7 +64,7 @@ expr:
 | e = ERROR_TOKEN;  { Expr.of_token e }
 ```
 
-And the ast should have the following boilerplate
+And the ast should have the following boilerplate:
 
 ```ocaml
 module Expr = struct
