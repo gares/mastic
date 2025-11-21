@@ -114,9 +114,7 @@ struct
         (t, b, e)
 
   let is_error_token x = match match_error_token x with None -> false | _ -> true
-
-  let pp_element fmt elt =
-    match elt with Element (st, x, _, _) -> pp_symbol (Some x) fmt @@ incoming_symbol st
+  let pp_element fmt elt = match elt with Element (st, x, _, _) -> pp_symbol (Some x) fmt @@ incoming_symbol st
 
   let pp_env fmt env =
     let rec to_list env =
@@ -134,7 +132,8 @@ struct
     Format.fprintf fmt "[%a <-- %a]" pp_xsymbol (lhs x)
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
       (rhs x)
-  let pp_prodn fmt (lhs,rhs,_,n) =
+
+  let pp_prodn fmt (lhs, rhs, _, n) =
     Format.fprintf fmt "[%a <-- %a]@%d" pp_xsymbol lhs
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
       rhs n

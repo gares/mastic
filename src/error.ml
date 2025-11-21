@@ -4,17 +4,14 @@ type 'a located = 'a * position * position
 
 let pp_located f fmt (s, b, e) = Format.fprintf fmt "(%a,%d,%d)" f s b.pos_cnum e.pos_cnum
 let show_located f x = Format.asprintf "%a" (pp_located f) x
-let compare_located (_,b1,_) (_,b2,_) = Stdlib.compare b1.pos_cnum b2.pos_cnum
+let compare_located (_, b1, _) (_, b2, _) = Stdlib.compare b1.pos_cnum b2.pos_cnum
 let loc x b e = (x, b, e)
 let unloc (x, _, _) = x
 let bloc (_, b, _) = b
 let eloc (_, _, e) = e
 let view x = x
 let map f (x, b, e) = (f x, b, e)
-let omorph f (x, b, e) =
-  match f x with
-  | None -> None
-  | Some y -> Some (y, b, e)
+let omorph f (x, b, e) = match f x with None -> None | Some y -> Some (y, b, e)
 
 type t_ = ..
 type t = t_ located list
@@ -56,11 +53,12 @@ let register name r : 'a registered =
   Registered
     {
       is_err = (fun x -> match r.match_ast x with Some _ -> true | None -> false);
-      of_token = (fun x ->
-        let condition (e,_,_) = Option.bind (r.match_error e) r.match_ast in
-        let same = List.concat @@ List.filter_map condition x in
-        let other = List.filter (fun x -> condition x = None) x in
-        r.build_ast (same @ other));
+      of_token =
+        (fun x ->
+          let condition (e, _, _) = Option.bind (r.match_error e) r.match_ast in
+          let same = List.concat @@ List.filter_map condition x in
+          let other = List.filter (fun x -> condition x = None) x in
+          r.build_ast (same @ other));
       build_token = (fun x -> [ map r.build_error x ]);
     }
 
@@ -88,11 +86,9 @@ let merge x y = List.stable_sort compare_located (x @ y)
 
 let rec squash (r : 'a registration) = function
   | [] -> []
-  | x :: y :: xs ->
-      begin match
-        Option.bind (r.match_error (unloc x)) r.match_ast, 
-        Option.bind (r.match_error (unloc y)) r.match_ast with
-      | Some x, Some y ->  merge x y
+  | x :: y :: xs -> begin
+      match (Option.bind (r.match_error (unloc x)) r.match_ast, Option.bind (r.match_error (unloc y)) r.match_ast) with
+      | Some x, Some y -> merge x y
       | _ -> x :: squash r (y :: xs)
-      end
-  | x :: xs -> x :: squash r xs 
+    end
+  | x :: xs -> x :: squash r xs

@@ -12,7 +12,6 @@ module type ListArg = sig
 
   val pp : Format.formatter -> t -> unit
   val registration : t Error.registration
-
 end
 
 module type ListSig = functor (X : ListArg) -> sig

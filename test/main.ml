@@ -49,15 +49,19 @@ let show_terminal : type a. a I.terminal -> string =
 
 let pp_symbol : type a. a option -> Format.formatter -> a I.symbol -> unit =
  fun x fmt -> function
-  | I.N I.N_func -> (match x with None -> Format.pp_print_string fmt "<func>" | Some x -> Ast.Func.pp fmt x)
-  | I.N I.N_cmd -> (match x with None -> Format.pp_print_string fmt "<cmd>" | Some x -> Ast.Cmd.pp fmt x)
-  | I.N I.N_expr -> (match x with None -> Format.pp_print_string fmt "<expr>" | Some x -> Ast.Expr.pp fmt x)
-  | I.N I.N_main -> (match x with None -> Format.pp_print_string fmt "<main>" | Some x -> Ast.Prog.pp fmt x)
-  | I.N I.N_ne_list_expr -> (match x with None -> Format.pp_print_string fmt "<ne list expr>" | Some x -> Ast.Expr.List.pp fmt x)
-  | I.N I.N_list_func -> (match x with None -> Format.pp_print_string fmt "<list func>" | Some x -> Ast.Func.List.pp fmt x)
-  | I.N I.N_list_cmd -> (match x with None -> Format.pp_print_string fmt "<list cmd>" | Some x -> Ast.Cmd.List.pp fmt x)
-  | I.T I.T_INT -> (match x with None -> Format.pp_print_string fmt "<int>" | Some x -> Format.fprintf fmt "%d" x)
-  | I.T I.T_IDENT -> (match x with None -> Format.pp_print_string fmt "<ident>" | Some x -> Format.pp_print_string fmt x)
+  | I.N I.N_func -> ( match x with None -> Format.pp_print_string fmt "<func>" | Some x -> Ast.Func.pp fmt x)
+  | I.N I.N_cmd -> ( match x with None -> Format.pp_print_string fmt "<cmd>" | Some x -> Ast.Cmd.pp fmt x)
+  | I.N I.N_expr -> ( match x with None -> Format.pp_print_string fmt "<expr>" | Some x -> Ast.Expr.pp fmt x)
+  | I.N I.N_main -> ( match x with None -> Format.pp_print_string fmt "<main>" | Some x -> Ast.Prog.pp fmt x)
+  | I.N I.N_ne_list_expr -> (
+      match x with None -> Format.pp_print_string fmt "<ne list expr>" | Some x -> Ast.Expr.List.pp fmt x)
+  | I.N I.N_list_func -> (
+      match x with None -> Format.pp_print_string fmt "<list func>" | Some x -> Ast.Func.List.pp fmt x)
+  | I.N I.N_list_cmd -> (
+      match x with None -> Format.pp_print_string fmt "<list cmd>" | Some x -> Ast.Cmd.List.pp fmt x)
+  | I.T I.T_INT -> ( match x with None -> Format.pp_print_string fmt "<int>" | Some x -> Format.fprintf fmt "%d" x)
+  | I.T I.T_IDENT -> (
+      match x with None -> Format.pp_print_string fmt "<ident>" | Some x -> Format.pp_print_string fmt x)
   | I.T t -> Format.fprintf fmt "%s" (show_terminal t)
 
 let token_of_terminal : type a. a I.terminal -> (string * token) option = function
@@ -71,7 +75,7 @@ let token_of_terminal : type a. a I.terminal -> (string * token) option = functi
   | T_INT -> None
   | T_IF -> Some ("if", Parser.IF)
   (* | T_IDENT -> None *)
-  | T_IDENT -> Some("_", Parser.IDENT "_") (* do we want this? eg: fun ( x := 1) *)
+  | T_IDENT -> Some ("_", Parser.IDENT "_") (* do we want this? eg: fun ( x := 1) *)
   | T_FUN -> Some ("fun", Parser.FUN)
   | T_ERROR_TOKEN -> None
   | T_EOF -> Some ("eof", Parser.EOF)
@@ -114,55 +118,50 @@ module Recovery = struct
     | I.X (I.N I.N_list_func), _, _, _ -> true
     | _ -> false
 
-  let is_ident x =
-    match x.Mastic.ErrorResilientParser.t with Parser.IDENT _ -> true | _ -> false
+  let is_ident x = match x.Mastic.ErrorResilientParser.t with Parser.IDENT _ -> true | _ -> false
   let is_assign x = x.Mastic.ErrorResilientParser.t = Parser.ASSIGN
+  let is_function_name = function I.X (I.N I.N_func), _, _, 1 -> true | _ -> false
 
-  let is_function_name = function
-    | I.X (I.N I.N_func), _, _, 1  -> true
-    | _ -> false
-
-let is_assign_expected (_,l,_,n) = match List.nth l n with
-  | I.X (I.N I.N_cmd) -> true
-  | I.X (I.N I.N_list_cmd) -> true
-  | _ -> false
+  let is_assign_expected (_, l, _, n) =
+    match List.nth l n with I.X (I.N I.N_cmd) -> true | I.X (I.N I.N_list_cmd) -> true | _ -> false
 
   (* Initialize the lexer, and catch any exception raised by the lexer. *)
   let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens ~reducible_productions:prods
       ~generation_streak =
     let open Mastic.ErrorResilientParser in
-
-    if prods <> [] then
-      Reduce (List.hd prods)
+    if prods <> [] then Reduce (List.hd prods)
     else
-
-    match tok with
-    (* tokens that look like a good point to re-start parsing (or terminate).
+      match tok with
+      (* tokens that look like a good point to re-start parsing (or terminate).
        these are typically the reserved words (keywords) of the language *)
-    | { t = FUN | EOF | SEMICOLON | ASSIGN | LPAREN | RPAREN | THEN | ELSE } -> begin
-        match prods with
-        | p :: _ ->
-            (* if we can reduce we do it. it could be we are parsing something
+      | { t = FUN | EOF | SEMICOLON | ASSIGN | LPAREN | RPAREN | THEN | ELSE } -> begin
+          match prods with
+          | p :: _ ->
+              (* if we can reduce we do it. it could be we are parsing something
                optional for example, but the next token is not a lookahead we exepct *)
-            Reduce p
-        | [] -> (
-            if is_assign tok && List.exists is_assign_expected productions && generation_streak < 10 then
-              GenerateToken { tok with t = Parser.IDENT "_x"; s = "_x" }
-            else
-            (* we try to complete one of the current productions *)
-            match acceptable_tokens with
-            | x :: _ ->
-                let x = if is_ident x && List.exists is_function_name productions then { x with t = Parser.IDENT "_f"; s = "_f" } else x in
-                (* this is a token that makes the automaton shift *)
-                if generation_streak < 10 then GenerateToken x else TurnIntoError
-            | [] ->
-                (* if we are parsing the top level production there is not point in padding
+              Reduce p
+          | [] -> (
+              if is_assign tok && List.exists is_assign_expected productions && generation_streak < 10 then
+                GenerateToken { tok with t = Parser.IDENT "_x"; s = "_x" }
+              else
+                (* we try to complete one of the current productions *)
+                match acceptable_tokens with
+                | x :: _ ->
+                    let x =
+                      if is_ident x && List.exists is_function_name productions then
+                        { x with t = Parser.IDENT "_f"; s = "_f" }
+                      else x
+                    in
+                    (* this is a token that makes the automaton shift *)
+                    if generation_streak < 10 then GenerateToken x else TurnIntoError
+                | [] ->
+                    (* if we are parsing the top level production there is not point in padding
                    TODO: maybe all list(something) should do the same *)
-                let at_start = productions |> List.exists is_production_for_sart_symbol in
-                if at_start || generation_streak >= 10 then TurnIntoError
-                else GenerateHole (* this is a hole, the error production for the current nonterminal *))
-      end
-    | _ -> TurnIntoError
+                    let at_start = productions |> List.exists is_production_for_sart_symbol in
+                    if at_start || generation_streak >= 10 then TurnIntoError
+                    else GenerateHole (* this is a hole, the error production for the current nonterminal *))
+        end
+      | _ -> TurnIntoError
 
   let reduce_as_parse_error : type a. a -> a I.symbol -> position -> position -> token =
    fun x tx b e ->
