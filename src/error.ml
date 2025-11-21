@@ -47,6 +47,8 @@ let pp fmt e =
 
 let show x = Format.asprintf "%a" pp x
 
+let merge x y = List.stable_sort compare_located (x @ y)
+
 let register name r : 'a registered =
   if SM.mem name !registered then failwith ("error " ^ name ^ " already registered");
   registered := SM.add name (Registration r) !registered;
@@ -58,7 +60,7 @@ let register name r : 'a registered =
           let condition (e, _, _) = Option.bind (r.match_error e) r.match_ast in
           let same = List.concat @@ List.filter_map condition x in
           let other = List.filter (fun x -> condition x = None) x in
-          r.build_ast (same @ other));
+          r.build_ast (merge same other));
       build_token = (fun x -> [ map r.build_error x ]);
     }
 
@@ -82,7 +84,6 @@ let span l =
   let rec aux b e = function [] -> (b, e) | x :: xs -> aux (min_pos b (bloc x)) (max_pos e (eloc x)) xs in
   match l with [] -> assert false | x :: xs -> aux (bloc x) (eloc x) xs
 
-let merge x y = List.stable_sort compare_located (x @ y)
 
 let rec squash (r : 'a registration) = function
   | [] -> []
