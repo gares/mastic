@@ -10,6 +10,10 @@ let bloc (_, b, _) = b
 let eloc (_, _, e) = e
 let view x = x
 let map f (x, b, e) = (f x, b, e)
+let omorph f (x, b, e) =
+  match f x with
+  | None -> None
+  | Some y -> Some (y, b, e)
 
 type t_ = ..
 type t = t_ located list
@@ -29,6 +33,21 @@ module SM = Map.Make (String)
 type xregistration = Registration : 'a registration -> xregistration
 
 let registered = ref SM.empty
+
+let pp fmt e =
+  let f fmt x =
+    let rec aux = function
+      | [] -> assert false
+      | (_, Registration r) :: rest -> (
+          match r.match_error (unloc x) with
+          | Some v -> pp_located r.pp fmt (loc v (bloc x) (eloc x))
+          | None -> aux rest)
+    in
+    aux (SM.bindings !registered)
+  in
+  Format.fprintf fmt "@[<hov 2>[%a]@]" (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") f) e
+
+let show x = Format.asprintf "%a" pp x
 
 let register name r : 'a registered =
   if SM.mem name !registered then failwith ("error " ^ name ^ " already registered");
@@ -66,17 +85,13 @@ let span l =
 
 let merge = ( @ )
 
-let pp fmt e =
-  let f fmt x =
-    let rec aux = function
-      | [] -> assert false
-      | (_, Registration r) :: rest -> (
-          match r.match_error (unloc x) with
-          | Some v -> pp_located r.pp fmt (loc v (bloc x) (eloc x))
-          | None -> aux rest)
-    in
-    aux (SM.bindings !registered)
-  in
-  Format.fprintf fmt "@[<hov 2>[%a]@]" (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") f) e
-
-let show x = Format.asprintf "%a" pp x
+let rec squash (r : 'a registration) = function
+  | [] -> []
+  | x :: y :: xs ->
+      begin match
+        Option.bind (r.match_error (unloc x)) r.match_ast, 
+        Option.bind (r.match_error (unloc y)) r.match_ast with
+      | Some x, Some y ->  merge x y
+      | _ -> x :: squash r (y :: xs)
+      end
+  | x :: xs -> x :: squash r xs 

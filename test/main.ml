@@ -47,18 +47,18 @@ let show_terminal : type a. a I.terminal -> string =
   | T_ASSIGN -> ":="
   | T_FUN -> "fun"
 
-let show_symbol : type a. a option -> a I.symbol -> string =
- fun x -> function
-  | I.N I.N_func -> x |> Option.fold ~none:"<func>" ~some:Ast.Func.show
-  | I.N I.N_cmd -> x |> Option.fold ~none:"<cmd>" ~some:Ast.Cmd.show
-  | I.N I.N_expr -> x |> Option.fold ~none:"<expr>" ~some:Ast.Expr.show
-  | I.N I.N_main -> x |> Option.fold ~none:"<main>" ~some:Ast.Prog.show
-  | I.N I.N_ne_list_expr -> x |> Option.fold ~none:"<ne list expr>" ~some:(fun x -> Ast.Expr.List.show x)
-  | I.N I.N_list_func -> x |> Option.fold ~none:"<list func>" ~some:(fun x -> Ast.Func.List.show x)
-  | I.N I.N_list_cmd -> x |> Option.fold ~none:"<list cmd>" ~some:(fun x -> Ast.Cmd.List.show x)
-  | I.T I.T_INT -> x |> Option.fold ~none:"<int>" ~some:string_of_int
-  | I.T I.T_IDENT -> x |> Option.fold ~none:"<ident>" ~some:(fun x -> x)
-  | I.T t -> show_terminal t
+let pp_symbol : type a. a option -> Format.formatter -> a I.symbol -> unit =
+ fun x fmt -> function
+  | I.N I.N_func -> (match x with None -> Format.pp_print_string fmt "<func>" | Some x -> Ast.Func.pp fmt x)
+  | I.N I.N_cmd -> (match x with None -> Format.pp_print_string fmt "<cmd>" | Some x -> Ast.Cmd.pp fmt x)
+  | I.N I.N_expr -> (match x with None -> Format.pp_print_string fmt "<expr>" | Some x -> Ast.Expr.pp fmt x)
+  | I.N I.N_main -> (match x with None -> Format.pp_print_string fmt "<main>" | Some x -> Ast.Prog.pp fmt x)
+  | I.N I.N_ne_list_expr -> (match x with None -> Format.pp_print_string fmt "<ne list expr>" | Some x -> Ast.Expr.List.pp fmt x)
+  | I.N I.N_list_func -> (match x with None -> Format.pp_print_string fmt "<list func>" | Some x -> Ast.Func.List.pp fmt x)
+  | I.N I.N_list_cmd -> (match x with None -> Format.pp_print_string fmt "<list cmd>" | Some x -> Ast.Cmd.List.pp fmt x)
+  | I.T I.T_INT -> (match x with None -> Format.pp_print_string fmt "<int>" | Some x -> Format.fprintf fmt "%d" x)
+  | I.T I.T_IDENT -> (match x with None -> Format.pp_print_string fmt "<ident>" | Some x -> Format.pp_print_string fmt x)
+  | I.T t -> Format.fprintf fmt "%s" (show_terminal t)
 
 let token_of_terminal : type a. a I.terminal -> (string * token) option = function
   | I.T_RPAREN -> Some (")", Parser.RPAREN)
@@ -99,7 +99,7 @@ module Recovery = struct
   type 'a symbol = 'a I.symbol
   type xsymbol = I.xsymbol
 
-  let show_symbol = show_symbol
+  let pp_symbol = pp_symbol
 
   type 'a terminal = 'a I.terminal
   type 'a env = 'a I.env
@@ -131,6 +131,11 @@ let is_assign_expected (_,l,_,n) = match List.nth l n with
   let handle_unexpected_token ~productions ~next_token:tok ~acceptable_tokens ~reducible_productions:prods
       ~generation_streak =
     let open Mastic.ErrorResilientParser in
+
+    if prods <> [] then
+      Reduce (List.hd prods)
+    else
+
     match tok with
     (* tokens that look like a good point to re-start parsing (or terminate).
        these are typically the reserved words (keywords) of the language *)
@@ -169,7 +174,7 @@ let is_assign_expected (_,l,_,n) = match List.nth l n with
     | I.N I.N_list_func -> ERROR_TOKEN (Ast.Func.List.build_token (Mastic.Error.loc x b e))
     | I.N I.N_ne_list_expr -> ERROR_TOKEN (Ast.Expr.List.build_token (Mastic.Error.loc x b e))
     | I.N I.N_list_cmd -> ERROR_TOKEN (Ast.Cmd.List.build_token (Mastic.Error.loc x b e))
-    | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (show_symbol (Some x) tx) b e))
+    | I.T y -> ERROR_TOKEN Mastic.Error.(mkLexError (loc (Format.asprintf "%a" (pp_symbol (Some x)) tx) b e))
 
   let is_eof_token = function EOF -> true | _ -> false
 end

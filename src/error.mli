@@ -8,6 +8,7 @@ val bloc : 'a located -> Lexing.position
 val eloc : 'a located -> Lexing.position
 val view : 'a located -> 'a * Lexing.position * Lexing.position
 val map : ('a -> 'b) -> 'a located -> 'b located
+val omorph : ('a -> 'b option) -> 'a located -> 'b located option
 
 type t_ = ..
 type t = t_ located list
@@ -29,5 +30,6 @@ type t_ += Lex of string
 val mkLexError : string located -> t
 val span : t -> Lexing.position * Lexing.position
 val merge : t -> t -> t
+val squash : 'a registration -> t -> t
 val show : t -> string
 val pp : Format.formatter -> t -> unit

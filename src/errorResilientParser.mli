@@ -17,7 +17,7 @@ module type Recovery = sig
   type 'a symbol
   type xsymbol
 
-  val show_symbol : 'a option -> 'a symbol -> string
+  val pp_symbol : 'a option -> Format.formatter -> 'a symbol -> unit
   (** for debugging *)
 
   type 'a terminal

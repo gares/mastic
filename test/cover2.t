@@ -14,11 +14,11 @@ Coverage
   READ Parser.EOF
   RED 1 [perr]
   RED 0 [(Ast.Func.Err [('fun',0,3); ('$',4,5)])]
-  RED 2 [(Ast.Func.Err [('fun',0,3); ('$',4,5)]); []]
-  SHIFT [[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
-  RED 2 [[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
+  RED 2 [(Ast.Func.Err [('fun',0,3); ('$',4,5)]); Func.List.Err[]]
+  SHIFT [Func.List.Err[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
+  RED 2 [Func.List.Err[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]
   ACCEPT
   error: ^^^ ^ recovered syntax error
   error: fun $ lex errors
-  ast: (Ast.Prog.P [(Ast.Func.Err [('fun',0,3); ('$',4,5)])])
+  ast: (Ast.Prog.P Func.List.Err[(Ast.Func.Err [('fun',0,3); ('$',4,5)])])
   

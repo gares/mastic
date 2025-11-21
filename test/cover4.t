@@ -14,11 +14,11 @@ Coverage
   READ Parser.EOF
   RED 1 [perr]
   RED 0 [(Ast.Func.Err [('x',0,1)])]
-  RED 2 [(Ast.Func.Err [('x',0,1)]); []]
-  SHIFT [[(Ast.Func.Err [('x',0,1)])]; eof]
-  RED 2 [[(Ast.Func.Err [('x',0,1)])]; eof]
+  RED 2 [(Ast.Func.Err [('x',0,1)]); Func.List.Err[]]
+  SHIFT [Func.List.Err[(Ast.Func.Err [('x',0,1)])]; eof]
+  RED 2 [Func.List.Err[(Ast.Func.Err [('x',0,1)])]; eof]
   ACCEPT
   error: ^ recovered syntax error
   error: x lex errors
-  ast: (Ast.Prog.P [(Ast.Func.Err [('x',0,1)])])
+  ast: (Ast.Prog.P Func.List.Err[(Ast.Func.Err [('x',0,1)])])
   

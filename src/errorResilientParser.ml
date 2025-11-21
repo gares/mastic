@@ -26,7 +26,7 @@ module type Recovery = sig
   type 'a symbol
   type xsymbol
 
-  val show_symbol : 'a option -> 'a symbol -> string
+  val pp_symbol : 'a option -> Format.formatter -> 'a symbol -> unit
 
   type 'a terminal
   type 'a env
@@ -116,26 +116,26 @@ struct
   let is_error_token x = match match_error_token x with None -> false | _ -> true
 
   let pp_element fmt elt =
-    match elt with Element (st, x, _, _) -> Format.fprintf fmt "%s" @@ show_symbol (Some x) @@ incoming_symbol st
+    match elt with Element (st, x, _, _) -> pp_symbol (Some x) fmt @@ incoming_symbol st
 
   let pp_env fmt env =
     let rec to_list env =
       match top env with None -> [] | Some x -> x :: (match pop env with None -> [] | Some x -> to_list x)
     in
     let stack = List.rev @@ to_list env in
-    Format.fprintf fmt "@[<hov 2>[%a]@]"
+    Format.fprintf fmt "@[<hov 2>[@,%a]@]"
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ") pp_element)
       stack
 
   let pp_gens fmt l = Format.fprintf fmt "%s" @@ (List.map (fun x -> x.s) l |> String.concat " ")
-  let pp_xsymbol fmt = function X s -> Format.fprintf fmt "%s" @@ show_symbol None s
+  let pp_xsymbol fmt = function X s -> pp_symbol None fmt s
 
   let pp_prod fmt x =
-    Format.fprintf fmt "[%a -> %a]" pp_xsymbol (lhs x)
+    Format.fprintf fmt "[%a <-- %a]" pp_xsymbol (lhs x)
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
       (rhs x)
   let pp_prodn fmt (lhs,rhs,_,n) =
-    Format.fprintf fmt "[%a -> %a]@%d" pp_xsymbol lhs
+    Format.fprintf fmt "[%a <-- %a]@%d" pp_xsymbol lhs
       (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_xsymbol)
       rhs n
 
