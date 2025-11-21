@@ -20,13 +20,14 @@ Fuxx
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
      Func.List.Err[
-       (Ast.Func.Err
-          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)]);
        (Ast.Func.Fun ("f",
-          Cmd.List.Err[(Ast.Cmd.Err [('_',24,24)]);
+          Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
-               (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None))]
-          ))])
+               (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None));
+            (Ast.Cmd.Err [('_',24,24)])]
+          ));
+       (Ast.Func.Err
+          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #2: fun f ( if 1 then x :=  else x := 1 )
@@ -58,7 +59,7 @@ Fuxx
   error:                                          ^ completed with _
   error:                                          ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[(Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)]);
+     Func.List.Err[
        (Ast.Func.Fun ("f",
           Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
@@ -73,7 +74,7 @@ Fuxx
                      ))
                   )),
                None))]
-          ))])
+          )); (Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #5: fun f ( if 1 then x :=  el$e x := 1 )
@@ -82,22 +83,22 @@ Fuxx
   error:                                          ^ completed with _
   error:                                          ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[(Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)]);
+     Func.List.Err[
        (Ast.Func.Fun ("f",
           Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
                (Ast.Cmd.Assign ("x",
                   (Ast.Expr.Call ("el",
-                     [(Ast.Expr.Err [('$',26,27)]);
+                     [
                        (Ast.Expr.Call ("e",
                           [
                             (Ast.Expr.Call ("x", [(Ast.Expr.Err [('_',31,31)])]
                                ))]
-                          ))]
+                          )); (Ast.Expr.Err [('$',26,27)])]
                      ))
                   )),
                None))]
-          ))])
+          )); (Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #6: fun f ( if 1  hen x :=  else x := 1 )
@@ -145,13 +146,13 @@ Fuxx
   error:                                   ^ completed with )
   ast: (Ast.Prog.P
      Func.List.Err[
-       (Ast.Func.Err
-          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)]);
        (Ast.Func.Fun ("f",
           Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1), (Ast.Cmd.Err [('_',18,18)]), None));
             (Ast.Cmd.Assign ("_x", (Ast.Expr.Err [('_',24,24)])))]
-          ))])
+          ));
+       (Ast.Func.Err
+          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #9: fun f$( if 1 then x :=  else x := 1 )
@@ -194,13 +195,14 @@ Fuxx
   error:                                    ^ completed with )
   ast: (Ast.Prog.P
      Func.List.Err[
-       (Ast.Func.Err
-          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)]);
        (Ast.Func.Fun ("f",
-          Cmd.List.Err[(Ast.Cmd.Err [('_',24,24)]);
+          Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
-               (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None))]
-          ))])
+               (Ast.Cmd.Err [('x',18,19); (':',20,21)]), None));
+            (Ast.Cmd.Err [('_',24,24)])]
+          ));
+       (Ast.Func.Err
+          [('else',24,28); ('x',29,30); (':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #13: fun f ( if 1 then x :=  else x := 1 )
@@ -249,12 +251,13 @@ Fuxx
   error:                                    ^ completed with _
   error:                                           ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[(Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)]);
+     Func.List.Err[
        (Ast.Func.Fun ("f",
-          Cmd.List.Err[(Ast.Cmd.Err [('lse',25,28); ('x',29,30)]);
+          Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
-               (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))), None))]
-          ))])
+               (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))), None));
+            (Ast.Cmd.Err [('lse',25,28); ('x',29,30)])]
+          )); (Ast.Func.Err [(':=',31,33); ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #17: fun f ; if 1 then x :=  else x := 1 )
@@ -263,11 +266,11 @@ Fuxx
   error:                  ^ completed with (
   error:                  ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[
+     Func.List.Err[(Ast.Func.Fun ("f", Cmd.List.Err[]));
        (Ast.Func.Err
           [(';',6,7); ('if',8,10); ('1',11,12); ('then',13,17); ('x',18,19);
             (':=',20,22); ('else',24,28); ('x',29,30); (':=',31,33);
-            ('1',34,35); (')',36,37)]); (Ast.Func.Fun ("f", Cmd.List.Err[]))])
+            ('1',34,35); (')',36,37)])])
   note: not a subterm
   
   fuzzed input #18: fun   ( if 1 then x :=  else x := 1 )
@@ -290,11 +293,13 @@ Fuxx
   ast: (Ast.Prog.P
      Func.List.Err[
        (Ast.Func.Fun ("f",
-          Cmd.List.Err[(Ast.Cmd.Err [('1',34,35)]);
+          Cmd.List.Err[
             (Ast.Cmd.If ((Ast.Expr.Lit 1),
                (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',24,24)]))),
-               (Some (Ast.Cmd.Err [('x',29,30); ('=',32,33)]))))]
+               (Some (Ast.Cmd.Err [('x',29,30); ('=',32,33)]))));
+            (Ast.Cmd.Err [('1',34,35)])]
           ))])
+  note: not a subterm
   
   fuzzed input #20: fun f$( if 1 then x :=  else x := 1 )
   error:            ^^^ ^^^ ^^ ^ ^^^^ ^ ^^  ^^^^ ^ ^^ ^ ^ recovered syntax error

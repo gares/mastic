@@ -217,9 +217,10 @@ Fuzz 10
   ast: (Ast.Prog.P
      Func.List.Err[
        (Ast.Func.Fun ("f",
-          Cmd.List.Err[(Ast.Cmd.Err [('f',13,14); ('x',15,16); ('y',17,18)]);
-            (Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',12,12)])))]
+          Cmd.List.Err[(Ast.Cmd.Assign ("x", (Ast.Expr.Err [('_',12,12)])));
+            (Ast.Cmd.Err [('f',13,14); ('x',15,16); ('y',17,18)])]
           ))])
+  note: not a subterm
   
   fuzzed input #17: f n f ( x := f x y )
   error:            ^ ^ ^ ^ ^ ^^ ^ ^ ^ ^ recovered syntax error
@@ -236,10 +237,10 @@ Fuzz 10
   error:                  ^ completed with (
   error:                  ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[
+     Func.List.Err[(Ast.Func.Fun ("f", Cmd.List.Err[]));
        (Ast.Func.Err
           [(';',6,7); ('x',8,9); (':=',10,12); ('f',13,14); ('x',15,16);
-            ('y',17,18); (')',19,20)]); (Ast.Func.Fun ("f", Cmd.List.Err[]))])
+            ('y',17,18); (')',19,20)])])
   note: not a subterm
   
   fuzzed input #19: fun f ( $ := f x y )
@@ -248,9 +249,10 @@ Fuzz 10
   error:                      ^ completed with )
   ast: (Ast.Prog.P
      Func.List.Err[
+       (Ast.Func.Fun ("f", Cmd.List.Err[(Ast.Cmd.Err [('$',8,9)])]));
        (Ast.Func.Err
-          [(':=',10,12); ('f',13,14); ('x',15,16); ('y',17,18); (')',19,20)]);
-       (Ast.Func.Fun ("f", Cmd.List.Err[(Ast.Cmd.Err [('$',8,9)])]))])
+          [(':=',10,12); ('f',13,14); ('x',15,16); ('y',17,18); (')',19,20)])])
+  note: not a subterm
   
   fuzzed input #20: fun f ( x;:= f x y )
   error:                     ^ completed with :=

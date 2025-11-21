@@ -112,9 +112,9 @@ functor
              let condition x = r.match_ast x in
              let err_X : Error.t = Error.squash X.registration @@ List.concat @@ List.filter_map r.match_ast l in
              let l : X.t list = List.filter (fun x -> condition x = None) l in
-             let l : t_ = of_list (other_X @ l) in
-             if err_X = [] && err_other2 = [] then l
-             else (Cons(r.build_ast (Error.squash r (err_X @ err_other2)),l))
+             let l = other_X @ l in
+             if err_X = [] && err_other2 = [] then of_list l
+             else of_list (l @ [r.build_ast (Error.squash r (Error.merge err_X err_other2))])
                  
 
   end

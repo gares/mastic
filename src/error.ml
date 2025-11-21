@@ -4,6 +4,7 @@ type 'a located = 'a * position * position
 
 let pp_located f fmt (s, b, e) = Format.fprintf fmt "(%a,%d,%d)" f s b.pos_cnum e.pos_cnum
 let show_located f x = Format.asprintf "%a" (pp_located f) x
+let compare_located (_,b1,_) (_,b2,_) = Stdlib.compare b1.pos_cnum b2.pos_cnum
 let loc x b e = (x, b, e)
 let unloc (x, _, _) = x
 let bloc (_, b, _) = b
@@ -83,7 +84,7 @@ let span l =
   let rec aux b e = function [] -> (b, e) | x :: xs -> aux (min_pos b (bloc x)) (max_pos e (eloc x)) xs in
   match l with [] -> assert false | x :: xs -> aux (bloc x) (eloc x) xs
 
-let merge = ( @ )
+let merge x y = List.stable_sort compare_located (x @ y)
 
 let rec squash (r : 'a registration) = function
   | [] -> []

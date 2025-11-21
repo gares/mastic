@@ -141,25 +141,26 @@ Coverage
             (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)])]]
   SHIFT [
           Func.List.Err[
-            (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)]);
             (Ast.Func.Fun ("x",
                Cmd.List.Err[
                  (Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-               ))]; eof]
+               )); (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)])];
+          eof]
   RED 2 [
           Func.List.Err[
-            (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)]);
             (Ast.Func.Fun ("x",
                Cmd.List.Err[
                  (Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-               ))]; eof]
+               )); (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)])];
+          eof]
   ACCEPT
   error:         ^ ^  ^^^^ ^ ^  recovered syntax error
   error:         x :  else x )  lex errors
   error:              ^ completed with _
   error:              ^ completed with )
   ast: (Ast.Prog.P
-     Func.List.Err[(Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)]);
+     Func.List.Err[
        (Ast.Func.Fun ("x",
-          Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]))])
+          Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]));
+       (Ast.Func.Err [('else',13,17); ('x',18,19); (')',20,21)])])
   
