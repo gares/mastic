@@ -1,6 +1,5 @@
 (library
  (name mastic)
- (public_name mastic)
  (preprocess
   (pps ppx_deriving.std))
  (modules error errorList errorResilientParser)
