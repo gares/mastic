@@ -10,6 +10,12 @@ let say x = Format.fprintf Format.err_formatter x
 
 type 'token tok = { s : string; t : 'token; b : Lexing.position; e : Lexing.position }
 
+type error =
+  | LexError of (Lexing.position * string)
+  | ParseError of (Lexing.position * int)
+
+type completion = Lexing.position * string
+
 let tok_to_triple { t; b; e } = (t, b, e)
 
 type ('token, 'production) recovery_action =
@@ -103,8 +109,8 @@ struct
 
   let automaton_productions env =
     match top env with
-    | None -> []
-    | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
+    | None -> 0,[]
+    | Some (Element (st, _, _, _)) -> number st, items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
   let valid t =
     match match_error_token t with
@@ -176,7 +182,8 @@ struct
 
   type state = {
     lexbuf : lexbuf; (* the stream of tokens *)
-    errbuf : (position * string) list; (* all tokens inserted *)
+    errbuf : error list; (* all errors *)
+    compbuf : completion list; (* all tokens inserted *)
     incoming_toks : token tok list; (* the head of the token is the lookahead *)
     generation_streak : int; (* how many dummy tokens were generated since the last read from the stream *)
     ticks : int; (* when we reach eof we have at most ticks to terminate *)
@@ -189,7 +196,7 @@ struct
     (* standard part, we just log what happend for debugging. Shifting pops the tokens buffer *)
     | Accepted v ->
         dbg (fun () -> say "@[<hov 2>ACCEPT@]@\n");
-        (st.errbuf, v)
+        (st.errbuf, st.compbuf, v)
     | Shifting (_, s, _) ->
         dbg (fun () -> say "@[<hov 2>SHIFT %a@]@\n" pp_env s);
         let chkp = resume ckpt in
@@ -238,13 +245,15 @@ struct
                   dbg (fun () -> say "@[<hov 2>  RECOVERY: push (squashed) %s on %a@]@\n" (show_token t) pp_env env);
                   let chkp = offer (input_needed env) (valid t) in
                   let incoming_toks = { s; t; b; e } :: incoming_toks in
-                  loop { st with incoming_toks } chkp
+                  let errbuf = LexError(b,s) :: st.errbuf in
+                  loop { st with incoming_toks; errbuf } chkp
             end
         (* 1.1 shift failure, the token does not fit *)
         | next_token :: incoming_toks ->
             dbg (fun () -> say "@[<hov 2>  LOOKAHEAD: %s (out of place token)@]@\n" (show_token next_token.t));
             let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
-            let productions = automaton_productions env in
+            let state_id, productions = automaton_productions env in
+            let st = { st with errbuf = ParseError(next_token.b,state_id) :: st.errbuf } in
             dbg (fun () -> say "@[<hov 2>    STATE: %a@]@\n" pp_prodsn productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: reductions: %a@]@\n" pp_prods reducible_productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: tokens: %a@]@\n" pp_gens acceptable_tokens);
@@ -297,18 +306,18 @@ struct
                       say "@[<hov 2>  RECOVERY: generate hole and push (generation_streak = %d)@]@\n"
                         st.generation_streak);
                   let chkp = offer (input_needed env) (tok_to_triple t) in
-                  let errbuf = (t.b, t.s) :: st.errbuf in
+                  let compbuf = (t.b, t.s) :: st.compbuf in
                   let generation_streak = st.generation_streak + 1 in
-                  loop { st with incoming_toks; errbuf; generation_streak } chkp
+                  loop { st with incoming_toks; compbuf; generation_streak } chkp
               | GenerateToken t ->
                   let incoming_toks = t :: next_token :: incoming_toks in
                   dbg (fun () ->
                       say "@[<hov 2>  RECOVERY: generate %s and push (generation_streak = %d)@]@\n" t.s
                         st.generation_streak);
                   let chkp = offer (input_needed env) (tok_to_triple t) in
-                  let errbuf = (t.b, t.s) :: st.errbuf in
+                  let compbuf = (t.b, t.s) :: st.compbuf in
                   let generation_streak = st.generation_streak + 1 in
-                  loop { st with incoming_toks; errbuf; generation_streak } chkp
+                  loop { st with incoming_toks; compbuf; generation_streak } chkp
               | Reduce p ->
                   let incoming_toks = next_token :: incoming_toks in
                   dbg (fun () -> say "@[<hov 2>  RECOVERY: reduce %a@]@\n" pp_prod p);
@@ -334,6 +343,6 @@ struct
 
   let parse lexbuf =
     let chkp = main lexbuf.lex_curr_p in
-    let st = { lexbuf; errbuf = []; generation_streak = 0; incoming_toks = []; ticks = 1 } in
+    let st = { lexbuf; errbuf = []; compbuf = []; generation_streak = 0; incoming_toks = []; ticks = 1 } in
     loop st chkp
 end

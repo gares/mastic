@@ -314,8 +314,8 @@ let process rands (line : string) =
   let header = "input: " in
   Printf.printf "%s%s\n" header line;
   let lexbuf = from_string line in
-  let errbuf, v = ERParser.parse lexbuf in
-  show_result header line errbuf v;
+  let _, compbuf, v = ERParser.parse lexbuf in
+  show_result header line compbuf v;
   Printf.printf "\n";
   for i = 1 to !fuzz_no do
     let line = fuzz rands line in
@@ -323,8 +323,8 @@ let process rands (line : string) =
       let header = Printf.sprintf "fuzzed input #%d: " i in
       Printf.printf "%s%s\n%!" header line;
       let lexbuf = from_string line in
-      let errbuf', v' = ERParser.parse lexbuf in
-      show_result header line errbuf' v';
+      let _, compbuf', v' = ERParser.parse lexbuf in
+      show_result header line compbuf' v';
       if not (included_prog v' v) then Printf.printf "note: not a subterm\n";
       Printf.printf "\n"
     end

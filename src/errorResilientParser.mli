@@ -61,6 +61,12 @@ module type IncrementalParser = sig
   val token : Lexing.lexbuf -> token
 end
 
+type error =
+  | LexError of (Lexing.position * string)
+  | ParseError of (Lexing.position * int)
+
+type completion = Lexing.position * string
+
 module Make : functor
   (I : MenhirLib.IncrementalEngine.EVERYTHING)
   (M : IncrementalParser with type 'a checkpoint = 'a I.checkpoint and type token = I.token)
@@ -72,5 +78,5 @@ module Make : functor
           and type 'a env = 'a I.env
           and type production = I.production)
   -> sig
-  val parse : Lexing.lexbuf -> (Lexing.position * string) list * M.ast
+  val parse : Lexing.lexbuf -> error list * completion list * M.ast
 end
