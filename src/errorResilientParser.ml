@@ -109,8 +109,8 @@ struct
 
   let automaton_productions env =
     match top env with
-    | None -> 0,[]
-    | Some (Element (st, _, _, _)) -> number st, items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
+    | None -> []
+    | Some (Element (st, _, _, _)) -> items st |> List.map (fun (p, i) -> (lhs p, rhs p, p, i))
 
   let valid t =
     match match_error_token t with
@@ -252,7 +252,8 @@ struct
         | next_token :: incoming_toks ->
             dbg (fun () -> say "@[<hov 2>  LOOKAHEAD: %s (out of place token)@]@\n" (show_token next_token.t));
             let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
-            let state_id, productions = automaton_productions env in
+            let productions = automaton_productions env in
+            let state_id = current_state_number env in
             let st = { st with errbuf = ParseError(next_token.b,state_id) :: st.errbuf } in
             dbg (fun () -> say "@[<hov 2>    STATE: %a@]@\n" pp_prodsn productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: reductions: %a@]@\n" pp_prods reducible_productions);
