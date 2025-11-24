@@ -254,7 +254,7 @@ struct
             let acceptable_tokens, reducible_productions = automaton_possible_moves env next_token.b in
             let productions = automaton_productions env in
             let state_id = current_state_number env in
-            let st = { st with errbuf = ParseError(next_token.b,state_id) :: st.errbuf } in
+            let st_w_err = { st with errbuf = ParseError(next_token.b,state_id) :: st.errbuf } in
             dbg (fun () -> say "@[<hov 2>    STATE: %a@]@\n" pp_prodsn productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: reductions: %a@]@\n" pp_prods reducible_productions);
             dbg (fun () -> say "@[<hov 2>    PROPOSE: tokens: %a@]@\n" pp_gens acceptable_tokens);
@@ -277,7 +277,7 @@ struct
 
                       let chkp = offer (input_needed env) valid in
                       let incoming_toks = { t; s = ""; b; e } :: incoming_toks in
-                      loop { st with incoming_toks } chkp
+                      loop { st_w_err with incoming_toks } chkp
                 end
               | TurnIntoError ->
                   let t =
@@ -291,7 +291,7 @@ struct
                       say "@[<hov 2>  RECOVERY: turn %s into %s and push@]@\n" (show_token next_token.t)
                         (show_token t.t));
                   let chkp = offer (input_needed env) (tok_to_triple t) in
-                  loop { st with incoming_toks } chkp
+                  loop { st_w_err with incoming_toks } chkp
               | GenerateHole ->
                   let b = next_token.b in
                   let t =
@@ -309,7 +309,7 @@ struct
                   let chkp = offer (input_needed env) (tok_to_triple t) in
                   let compbuf = (t.b, t.s) :: st.compbuf in
                   let generation_streak = st.generation_streak + 1 in
-                  loop { st with incoming_toks; compbuf; generation_streak } chkp
+                  loop { st_w_err with incoming_toks; compbuf; generation_streak } chkp
               | GenerateToken t ->
                   let incoming_toks = t :: next_token :: incoming_toks in
                   dbg (fun () ->
@@ -318,7 +318,7 @@ struct
                   let chkp = offer (input_needed env) (tok_to_triple t) in
                   let compbuf = (t.b, t.s) :: st.compbuf in
                   let generation_streak = st.generation_streak + 1 in
-                  loop { st with incoming_toks; compbuf; generation_streak } chkp
+                  loop { st_w_err with incoming_toks; compbuf; generation_streak } chkp
               | Reduce p ->
                   let incoming_toks = next_token :: incoming_toks in
                   dbg (fun () -> say "@[<hov 2>  RECOVERY: reduce %a@]@\n" pp_prod p);
