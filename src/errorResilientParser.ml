@@ -245,8 +245,8 @@ struct
                   dbg (fun () -> say "@[<hov 2>  RECOVERY: push (squashed) %s on %a@]@\n" (show_token t) pp_env env);
                   let chkp = offer (input_needed env) (valid t) in
                   let incoming_toks = { s; t; b; e } :: incoming_toks in
-                  let errbuf = LexError(b,s) :: st.errbuf in
-                  loop { st with incoming_toks; errbuf } chkp
+                  (* let errbuf = LexError(b,s) :: st.errbuf in *)
+                  loop { st with incoming_toks } chkp
             end
         (* 1.1 shift failure, the token does not fit *)
         | next_token :: incoming_toks ->
