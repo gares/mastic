@@ -4,6 +4,7 @@ type 'token tok = { s : string; t : 'token; b : Lexing.position; e : Lexing.posi
 
 type ('token, 'production) recovery_action =
   | TurnIntoError
+  | TurnIntoThisError of Error.t
   | GenerateHole
   | GenerateToken of 'token tok
   | Reduce of 'production

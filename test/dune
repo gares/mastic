@@ -9,7 +9,7 @@
  (name main)
  (preprocess
   (pps ppx_deriving.std))
- (modules main ast parser lexer)
+ (modules main ast parser lexer recovery)
  (libraries menhirLib mastic))
 
 (cram

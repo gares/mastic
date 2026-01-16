@@ -16,9 +16,9 @@ Coverage
     LOOKAHEAD: (Parser.ERROR_TOKEN [(':',10,11)]) (invalid token)
     RECOVERY: push (squashed) (Parser.ERROR_TOKEN [('x',8,9); (':',10,11)]) on 
     [fun; x; (]
-  SHIFT [fun; x; (; perr]
+  SHIFT [fun; x; (; [('x',8,9); (':',10,11)]]
   READ Parser.SEMICOLON
-  RED 1 [fun; x; (; perr]
+  RED 1 [fun; x; (; [('x',8,9); (':',10,11)]]
   SHIFT [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;]
   READ Parser.ELSE
   * ERROR: stack [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;]
@@ -27,9 +27,9 @@ Coverage
       PROPOSE: reductions: 
       PROPOSE: tokens: 
     RECOVERY: generate hole and push (generation_streak = 0)
-  SHIFT [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;; perr]
+  SHIFT [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;; [('_',13,13)]]
   READ Parser.ELSE
-  RED 1 [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;; perr]
+  RED 1 [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;; [('_',13,13)]]
   * ERROR: stack [fun; x; (; (Ast.Cmd.Err [('x',8,9); (':',10,11)]); ;;
                    (Ast.Cmd.Err [('_',13,13)])]
     LOOKAHEAD: Parser.ELSE (out of place token)
@@ -66,12 +66,12 @@ Coverage
   SHIFT [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-             )); perr]
+             )); [('else',13,17)]]
   READ (Parser.IDENT "x")
   RED 1 [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-             )); perr]
+             )); [('else',13,17)]]
   * ERROR: stack [
                    (Ast.Func.Fun ("x",
                       Cmd.List.Err[
@@ -85,12 +85,12 @@ Coverage
   SHIFT [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-             )); (Ast.Func.Err [('else',13,17)]); perr]
+             )); (Ast.Func.Err [('else',13,17)]); [('x',18,19)]]
   READ Parser.RPAREN
   RED 1 [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
-             )); (Ast.Func.Err [('else',13,17)]); perr]
+             )); (Ast.Func.Err [('else',13,17)]); [('x',18,19)]]
   * ERROR: stack [
                    (Ast.Func.Fun ("x",
                       Cmd.List.Err[
@@ -106,13 +106,13 @@ Coverage
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
              )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
-          perr]
+          [(')',20,21)]]
   READ Parser.EOF
   RED 1 [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]
              )); (Ast.Func.Err [('else',13,17)]); (Ast.Func.Err [('x',18,19)]);
-          perr]
+          [(')',20,21)]]
   RED 0 [
           (Ast.Func.Fun ("x",
              Cmd.List.Err[(Ast.Cmd.Err [('x',8,9); (':',10,11); ('_',13,13)])]

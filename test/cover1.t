@@ -10,9 +10,9 @@ Coverage
       PROPOSE: reductions: 
       PROPOSE: tokens: 
     RECOVERY: turn (Parser.IDENT "x") into (Parser.ERROR_TOKEN [('x',0,1)]) and push
-  SHIFT [perr]
+  SHIFT [[('x',0,1)]]
   READ Parser.EOF
-  RED 1 [perr]
+  RED 1 [[('x',0,1)]]
   RED 0 [(Ast.Func.Err [('x',0,1)])]
   RED 2 [(Ast.Func.Err [('x',0,1)]); Func.List.Err[]]
   SHIFT [Func.List.Err[(Ast.Func.Err [('x',0,1)])]; eof]

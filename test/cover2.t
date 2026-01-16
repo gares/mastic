@@ -10,9 +10,9 @@ Coverage
     LOOKAHEAD: (Parser.ERROR_TOKEN [('$',4,5)]) (invalid token)
     RECOVERY: push (squashed) (Parser.ERROR_TOKEN [('fun',0,3); ('$',4,5)]) on 
     []
-  SHIFT [perr]
+  SHIFT [[('fun',0,3); ('$',4,5)]]
   READ Parser.EOF
-  RED 1 [perr]
+  RED 1 [[('fun',0,3); ('$',4,5)]]
   RED 0 [(Ast.Func.Err [('fun',0,3); ('$',4,5)])]
   RED 2 [(Ast.Func.Err [('fun',0,3); ('$',4,5)]); Func.List.Err[]]
   SHIFT [Func.List.Err[(Ast.Func.Err [('fun',0,3); ('$',4,5)])]; eof]

@@ -20,6 +20,7 @@ let tok_to_triple { t; b; e } = (t, b, e)
 
 type ('token, 'production) recovery_action =
   | TurnIntoError
+  | TurnIntoThisError of Error.t
   | GenerateHole
   | GenerateToken of 'token tok
   | Reduce of 'production
@@ -284,6 +285,19 @@ struct
                     {
                       next_token with
                       t = build_error_token Error.(mkLexError (loc next_token.s next_token.b next_token.e));
+                    }
+                  in
+                  let incoming_toks = t :: incoming_toks in
+                  dbg (fun () ->
+                      say "@[<hov 2>  RECOVERY: turn %s into %s and push@]@\n" (show_token next_token.t)
+                        (show_token t.t));
+                  let chkp = offer (input_needed env) (tok_to_triple t) in
+                  loop { st_w_err with incoming_toks } chkp
+              | TurnIntoThisError e ->
+                 let t =
+                    {
+                      next_token with
+                      t = build_error_token e;
                     }
                   in
                   let incoming_toks = t :: incoming_toks in
