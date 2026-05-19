@@ -58,9 +58,9 @@ functor
   struct
     type t_ = X.t t
 
-    let ppname = X.name ^ ".List.Err"
+    let ppname = X.name ^ ".List"
     let pp x = pp ppname X.pp x
-    let name = X.name ^ ".List.t"
+    let name = X.name ^ ".List.Err"
     let show x = Format.asprintf "%a" pp x
 
     type Error.t_ += List of t_
